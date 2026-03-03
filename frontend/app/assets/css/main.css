@@ -2,17 +2,38 @@
 @import "@nuxt/ui";
 
 @theme static {
-  --font-sans: 'Public Sans', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --radius-none: 0;
+  --radius-sm: 0;
+  --radius: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+}
 
-  --color-green-50: #EFFDF5;
-  --color-green-100: #D9FBE8;
-  --color-green-200: #B3F5D1;
-  --color-green-300: #75EDAE;
-  --color-green-400: #00DC82;
-  --color-green-500: #00C16A;
-  --color-green-600: #00A155;
-  --color-green-700: #007F45;
-  --color-green-800: #016538;
-  --color-green-900: #0A5331;
-  --color-green-950: #052E16;
+:root {
+  --ui-radius: 0;
+  --ui-primary: black;
+  --ui-secondary: #f1f1f1;
+  --ui-text: #000000;
+  --ui-text-highlighted: #000000;
+  --ui-text-inverted: white;
+  --ui-bg: white;
+  --ui-bg-muted: white;
+  --ui-bg-elevated: white;
+}
+
+.dark {
+  --ui-primary: black;
+  --ui-secondary: white;
+}
+
+/* Neutral outline button: invert on hover */
+button.bg-default:hover,
+a.bg-default:hover {
+  background-color: black !important;
+  color: white !important;
+  --tw-ring-color: black !important;
 }

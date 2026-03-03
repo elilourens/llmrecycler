@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-background">
+  <div class="min-h-screen flex items-center justify-center bg-white">
     <div class="text-center">
       <UIcon name="i-lucide-loader-circle" class="animate-spin text-primary size-12 mb-4" />
       <p class="text-muted">Verifying...</p>
@@ -8,20 +8,23 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth'
-} as any)
-
 onMounted(async () => {
-  const { $supabase } = useNuxtApp()
-  const supabase = $supabase as any
-
+  const supabase = useSupabaseClient()
   const code = useRoute().query.code as string | undefined
+
+  let destination = '/'
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      destination = '/auth/reset-password'
+    }
+  })
 
   if (code) {
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  await navigateTo('/')
+  subscription.unsubscribe()
+  await navigateTo(destination)
 })
 </script>

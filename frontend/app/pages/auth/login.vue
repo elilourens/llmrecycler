@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-background px-4">
+  <div class="min-h-screen flex items-center justify-center bg-white px-4">
     <UCard class="w-full max-w-md">
       <template #header>
         <h1 class="text-2xl font-bold text-center text-highlighted">Sign In</h1>
