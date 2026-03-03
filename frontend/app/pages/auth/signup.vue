@@ -39,10 +39,6 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth'
-} as any)
-
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')

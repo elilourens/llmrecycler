@@ -10,9 +10,25 @@
 <script setup lang="ts">
 onMounted(async () => {
   const supabase = useSupabaseClient()
-  const code = useRoute().query.code as string | undefined
+  const route = useRoute()
+  const code = route.query.code as string | undefined
+  const hash = window.location.hash
 
   let destination = '/'
+  let errorMessage = ''
+
+  // Parse hash for errors (Supabase sends errors as #error=...&error_description=...)
+  const hashParams = new URLSearchParams(hash.replace('#', ''))
+  const error = hashParams.get('error')
+  const errorDescription = hashParams.get('error_description')
+
+  // Check for Supabase errors first
+  if (error) {
+    errorMessage = decodeURIComponent(errorDescription || error)
+    // Redirect to forgot-password with error, user can request a new link
+    await navigateTo(`/auth/forgot-password?error=${encodeURIComponent(errorMessage)}`)
+    return
+  }
 
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
     if (event === 'PASSWORD_RECOVERY') {
@@ -20,8 +36,16 @@ onMounted(async () => {
     }
   })
 
+  // Handle OAuth code exchange
   if (code) {
     await supabase.auth.exchangeCodeForSession(code)
+  }
+
+  // Handle password recovery via hash (type=recovery in URL fragment)
+  if (hash.includes('type=recovery')) {
+    // Ensure session is hydrated before redirecting
+    await supabase.auth.getSession()
+    destination = '/auth/reset-password'
   }
 
   subscription.unsubscribe()

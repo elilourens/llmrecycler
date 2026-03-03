@@ -41,16 +41,21 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth'
-} as any)
-
 const email = ref('')
 const loading = ref(false)
 const error = ref('')
 const success = ref(false)
 
 const { resetPassword } = useAuth()
+
+// Show error from callback if link expired
+onMounted(() => {
+  const route = useRoute()
+  const errorParam = route.query.error as string | undefined
+  if (errorParam) {
+    error.value = decodeURIComponent(errorParam)
+  }
+})
 
 const handleReset = async () => {
   error.value = ''

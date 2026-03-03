@@ -24,10 +24,6 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth'
-} as any)
-
 const loggingOut = ref(false)
 const { user, signOut } = useAuth()
 
