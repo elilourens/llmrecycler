@@ -1,40 +1,74 @@
 <template>
-  <div class="min-h-screen bg-white">
-    <div class="max-w-7xl mx-auto px-4 py-8">
-      <div class="flex justify-between items-center mb-8">
-        <h1 class="text-2xl font-bold text-highlighted">Dashboard</h1>
-        <div class="flex items-center gap-4">
-          <span v-if="user" class="text-sm text-muted">{{ user.email }}</span>
-          <UButton
-            color="primary"
-            
-            :loading="loggingOut"
-            @click="handleLogout"
-          >
-            Sign Out
-          </UButton>
-        </div>
+  <div class="min-h-screen bg-gradient-to-br from-white to-slate-50 flex items-center justify-center px-4">
+    <div class="max-w-4xl w-full text-center overflow-hidden">
+      <h1 class="text-4xl md:text-5xl font-bold text-slate-900 mb-4">API Recycler</h1>
+      <pre class="font-mono text-primary text-[0.35rem] md:text-[0.45rem] lg:text-[0.55rem] leading-[1.1] mb-2 inline-block">
+                                                                                                           
+                                   +@@%%%%%%%%%%%%%%@@@@@#                                          
+                                 #@*****************%@..@@%#**#@*                                   
+                                @#*****************@ :@#********#@                                  
+                               @*****************#@ %%************@                                 
+                              @******************@ @#**************@.                               
+                             @*****************#@ @*****************@*  %@@                         
+                            @*****************#@   @*****************#%**@                          
+                           @*****************#@     @*******************@                           
+                          @@****************#@       @*****************@                            
+                             @@************#@         @***************@                             
+                                @@#*******%@           @*************@                              
+                                   #@%***%%          +@#************@                               
+                @@*************@      -@@#         %%@@@@@@@@@@@@@@@      :@@@                      
+                  *@************@                                      :@@***#@                     
+                  -@*************@                                  .@@********@                    
+                  @***************@                               @@************@:                  
+                 @****************#@                           @@****************@-                 
+                @******************#@                          @%*****************@+                
+               @*****************@@@#@                          #@*****************@=               
+              :@****************@:   #@                          +@*****************@               
+               @***************@                                  :@****************@               
+                @%************@                                     @***************@               
+                + @@*********@                           -@          @*************@                
+                 @@. :*%%%@@@                           -@@           @***********@                 
+                  @*%@@@@@@@@@@@@@@@@@@@@@@@@          =@*@........... @#********@                  
+                  :@************************@         =@**************@ @%******@                   
+                   .@***********************@        +@****************@ #%****@                    
+                    .@**********************@       *@******************@ @***@                     
+                     .@*********************@      *%*******************%*:%#@                      
+                      -@********************@     *%********************#@ @@                       
+                       :@*******************@      @********************##+@                        
+                        :@******************@       @#******************@                           
+                          @%****************@        @#****************@.                           
+                             #@@@@@@@@@@@@@@@         #%***##%@@@@@@@@:                             
+                                                       +@*#@                                        
+                                                        :@%=                                        
+                                                          @                                         
+                                                                                                                                  
+      </pre>
+      <p class="text-lg md:text-xl text-slate-600">Resell your API credits for cash.</p>
+      <p class="text-lg md:text-xl text-slate-600 ">Or.</p>
+      <p class="md:text-xl text-slate-600 mb-4">Buy API credits for half price.</p>
+      <div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <UButton
+          to="/auth/login"
+          color="primary"
+          size="lg"
+        >
+          Sign In
+        </UButton>
+        <UButton
+          to="/auth/signup"
+          color="primary"
+          variant="soft"
+          size="lg"
+        >
+          Create Account
+        </UButton>
       </div>
-
-      <UCard>
-        <p class="text-muted">Welcome back, {{ user?.email }}</p>
-      </UCard>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-const loggingOut = ref(false)
-const { user, signOut } = useAuth()
-
-const handleLogout = async () => {
-  loggingOut.value = true
-  try {
-    await signOut()
-    await navigateTo('/auth/login')
-  } catch (error) {
-    console.error('Logout failed:', error)
-    loggingOut.value = false
-  }
-}
+useHead({
+  title: 'LLM Recycler'
+})
 </script>

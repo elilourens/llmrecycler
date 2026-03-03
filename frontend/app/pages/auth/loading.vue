@@ -12,6 +12,6 @@ const supabase = useSupabaseClient()
 
 onMounted(async () => {
   const { data: { session } } = await supabase.auth.getSession()
-  await navigateTo(session ? '/' : '/auth/login')
+  await navigateTo(session ? '/dashboard' : '/auth/login')
 })
 </script>

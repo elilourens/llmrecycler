@@ -10,7 +10,7 @@ export default defineNuxtRouteMiddleware((to) => {
   // Redirect authenticated users away from auth pages
   const authOnlyRoutes = ['/auth/login', '/auth/signup', '/auth/forgot-password']
   if (user.value && authOnlyRoutes.includes(to.path)) {
-    return navigateTo('/')
+    return navigateTo('/dashboard')
   }
 
   // OAuth code forwarding: if we hit any page with ?code=, send to callback handler

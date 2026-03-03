@@ -75,7 +75,7 @@ const handleLogin = async () => {
 
   try {
     await signIn(email.value, password.value)
-    await navigateTo('/')
+    await navigateTo('/dashboard')
   } catch (err: any) {
     error.value = err.message || 'Failed to sign in'
   } finally {

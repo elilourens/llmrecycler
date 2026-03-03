@@ -37,6 +37,7 @@ export default defineNuxtConfig({
       login: '/auth/loading',
       callback: '/auth/callback',
       exclude: [
+        '/',
         '/auth/login',
         '/auth/signup',
         '/auth/forgot-password',

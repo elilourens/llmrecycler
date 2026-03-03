@@ -14,7 +14,7 @@ onMounted(async () => {
   const code = route.query.code as string | undefined
   const hash = window.location.hash
 
-  let destination = '/'
+  let destination = '/dashboard'
   let errorMessage = ''
 
   // Parse hash for errors (Supabase sends errors as #error=...&error_description=...)

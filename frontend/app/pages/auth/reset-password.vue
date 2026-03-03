@@ -44,7 +44,7 @@ const handleReset = async () => {
 
   try {
     await updatePassword(password.value)
-    await navigateTo('/')
+    await navigateTo('/dashboard')
   } catch (err: any) {
     error.value = err.message || 'Failed to update password'
   } finally {
