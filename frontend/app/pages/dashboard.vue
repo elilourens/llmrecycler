@@ -23,7 +23,10 @@
           :total-spent="0.00"
         />
 
-        <SellerKeys :keys="sellerKeys" />
+        <SellerKeys
+          :keys="sellerKeys"
+          @key-added="fetchKeys"
+        />
       </div>
     </div>
   </div>
@@ -32,13 +35,27 @@
 <script setup lang="ts">
 const loggingOut = ref(false)
 const { user, signOut } = useAuth()
+const { apiFetch } = useApi()
 
-const sellerKeys = ref([
-  { is_active: true, key_hint: 'sk-ant-test1234567890abcdefghijklmn***', provider: 'Anthropic Claude API Key' },
-  { is_active: true, key_hint: 'sk-proj-test1234567890abcdefghijk***', provider: 'OpenAI API Key' },
-  { is_active: false, key_hint: 'AIzaSytest1234567890abcdefghijk***', provider: 'Google Gemini API Key' },
-  { is_active: true, key_hint: 'xai-test1234567890abcdefghijklmno***', provider: 'xAI Grok API Key' },
-])
+const sellerKeys = ref<Array<{ id: string; is_active: boolean; key_hint: string; provider: string; created_at: string }>>([])
+const loading = ref(true)
+
+const fetchKeys = async () => {
+  loading.value = true
+  try {
+    const { keys } = await apiFetch('/api/keys')
+    sellerKeys.value = keys || []
+  } catch (error) {
+    console.error('Failed to fetch keys:', error)
+    sellerKeys.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchKeys()
+})
 
 const handleLogout = async () => {
   loggingOut.value = true

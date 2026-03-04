@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { supabase } from "./supabase";
+import keysRouter from "./routes/keys";
 
 const app = new Hono();
 
@@ -19,6 +20,9 @@ app.use(
 app.get("/health", (c) => {
   return c.json({ status: "ok" });
 });
+
+// API routes
+app.route("/api/keys", keysRouter);
 
 // Example API route
 app.get("/api/test", (c) => {

@@ -47,21 +47,23 @@
       <p class="text-lg md:text-xl text-slate-600 ">Or.</p>
       <p class="md:text-xl text-slate-600 mb-4">Buy API credits for half price.</p>
       <div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-        <UButton
-          to="/auth/login"
-          color="primary"
-          size="lg"
-        >
-          Sign In
-        </UButton>
-        <UButton
-          to="/auth/signup"
-          color="primary"
-          variant="soft"
-          size="lg"
-        >
-          Create Account
-        </UButton>
+        <a href="/auth/login">
+          <UButton
+            color="primary"
+            size="lg"
+          >
+            Sign In
+          </UButton>
+        </a>
+        <a href="/auth/signup">
+          <UButton
+            color="primary"
+            variant="soft"
+            size="lg"
+          >
+            Create Account
+          </UButton>
+        </a>
       </div>
     </div>
   </div>

@@ -65,7 +65,8 @@
             Cancel
           </UButton>
           <UButton
-            :disabled="!!(detectedProvider && keyValidation && !keyValidation.isValid)"
+            :disabled="!!(detectedProvider && keyValidation && !keyValidation.isValid) || loading"
+            :loading="loading"
             @click="handleAddKey"
           >
             Add
@@ -181,10 +182,38 @@ const columns = [
   },
 ]
 
-const handleAddKey = () => {
-  // TODO: Send apiKey to backend
-  console.log('Adding key:', apiKey.value)
-  apiKey.value = ''
-  isOpen.value = false
+const emit = defineEmits<{
+  'key-added': []
+}>()
+
+const loading = ref(false)
+
+const handleAddKey = async () => {
+  const { apiFetch } = useApi()
+  loading.value = true
+
+  try {
+    await apiFetch('/api/keys', {
+      method: 'POST',
+      body: {
+        key: apiKey.value.trim(),
+        provider: detectedProvider.value,
+      },
+    })
+
+    // Success
+    apiKey.value = ''
+    isOpen.value = false
+    emit('key-added')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to add key'
+    useToast().add({
+      title: 'Error',
+      description: message,
+      color: 'error',
+    })
+  } finally {
+    loading.value = false
+  }
 }
 </script>
