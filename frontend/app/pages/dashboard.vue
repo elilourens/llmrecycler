@@ -16,9 +16,15 @@
         </div>
       </div>
 
-      <UCard>
-        <p class="text-muted">Welcome back, {{ user?.email }}</p>
-      </UCard>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Balance
+          :balance="0.00"
+          :total-earned="0.00"
+          :total-spent="0.00"
+        />
+
+        <SellerKeys :keys="sellerKeys" />
+      </div>
     </div>
   </div>
 </template>
@@ -26,6 +32,13 @@
 <script setup lang="ts">
 const loggingOut = ref(false)
 const { user, signOut } = useAuth()
+
+const sellerKeys = ref([
+  { is_active: true, key_hint: 'sk-ant-test1234567890abcdefghijklmn***', provider: 'Anthropic Claude API Key' },
+  { is_active: true, key_hint: 'sk-proj-test1234567890abcdefghijk***', provider: 'OpenAI API Key' },
+  { is_active: false, key_hint: 'AIzaSytest1234567890abcdefghijk***', provider: 'Google Gemini API Key' },
+  { is_active: true, key_hint: 'xai-test1234567890abcdefghijklmno***', provider: 'xAI Grok API Key' },
+])
 
 const handleLogout = async () => {
   loggingOut.value = true
