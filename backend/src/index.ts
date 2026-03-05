@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { supabase } from "./supabase";
 import keysRouter from "./routes/keys";
+import buyerKeysRouter from "./routes/buyer-keys";
 
 const app = new Hono();
 
@@ -10,7 +11,7 @@ app.use(
   "*",
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
@@ -23,6 +24,7 @@ app.get("/health", (c) => {
 
 // API routes
 app.route("/api/keys", keysRouter);
+app.route("/api/buyer-keys", buyerKeysRouter);
 
 // Example API route
 app.get("/api/test", (c) => {

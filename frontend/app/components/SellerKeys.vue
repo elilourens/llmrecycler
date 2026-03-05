@@ -14,20 +14,43 @@
 
     <div class="max-h-48 overflow-y-auto">
       <UTable :data="keys" :columns="columns" :ui="{ td: 'text-xs', th: 'text-xs' }" sticky="header">
-      <template #is_active-data="{ row }">
-        <UBadge :color="row.original.is_active ? 'success' : 'neutral'" variant="subtle" class="text-xs">
+      <template #is_active-cell="{ row }">
+        <UBadge :color="row.original.is_active ? 'primary' : 'neutral'" variant="subtle" class="text-xs">
           {{ row.original.is_active ? 'Active' : 'Inactive' }}
         </UBadge>
       </template>
 
-      <template #key_hint-data="{ row }">
-        <code class="text-xs text-muted bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded">
+      <template #key_hint-cell="{ row }">
+        <code class="text-xs text-black">
           {{ row.original.key_hint }}
         </code>
       </template>
 
-      <template #provider-data="{ row }">
-        <span class="text-xs">{{ row.original.provider }}</span>
+      <template #provider-cell="{ row }">
+        <span class="text-xs text-black">{{ row.original.provider }}</span>
+      </template>
+
+      <template #actions-cell="{ row }">
+        <div class="flex gap-2">
+          <UButton
+            size="xs"
+            :color="row.original.is_active ? 'warning' : 'success'"
+            variant="outline"
+            @click="handleToggleStatus(row.original.id, !row.original.is_active)"
+            :loading="togglingKeyId === row.original.id"
+          >
+            {{ row.original.is_active ? 'Disable' : 'Enable' }}
+          </UButton>
+          <UButton
+            size="xs"
+            color="error"
+            variant="outline"
+            @click="handleRevoke(row.original.id)"
+            :loading="revokingKeyId === row.original.id"
+          >
+            Revoke
+          </UButton>
+        </div>
       </template>
     </UTable>
     </div>
@@ -79,6 +102,7 @@
 
 <script setup lang="ts">
 interface SellerKey {
+  id: string
   is_active: boolean
   key_hint: string
   provider: string
@@ -92,22 +116,24 @@ defineProps<Props>()
 
 const isOpen = ref(false)
 const apiKey = ref('')
+const togglingKeyId = ref<string | null>(null)
+const revokingKeyId = ref<string | null>(null)
 
 const detectedProvider = computed(() => {
   const key = apiKey.value.trim().toLowerCase()
 
   if (!key) return null
 
-  if (key.startsWith('sk-ant-')) return 'Anthropic Claude API Key'
+  if (key.startsWith('sk-ant-')) return 'Anthropic'
   if (key.startsWith('sk-proj-') || key.startsWith('sk-')) {
     // Could be OpenAI or Grok, check more specifically
-    if (key.includes('grok')) return 'xAI Grok API Key'
-    return 'OpenAI API Key'
+    if (key.includes('grok')) return 'xAI'
+    return 'OpenAI'
   }
-  if (key.startsWith('aiza') || key.startsWith('aiz-')) return 'Google Gemini API Key'
-  if (key.startsWith('xai-')) return 'xAI Grok API Key'
-  if (key.startsWith('sk-')) return 'OpenAI API Key'
-  if (key.includes('deepseek') || key.startsWith('sk_deepseek')) return 'Deepseek API Key'
+  if (key.startsWith('aiza') || key.startsWith('aiz-')) return 'Google'
+  if (key.startsWith('xai-')) return 'xAI'
+  if (key.startsWith('sk-')) return 'OpenAI'
+  if (key.includes('deepseek') || key.startsWith('sk_deepseek')) return 'Deepseek'
 
   return null
 })
@@ -126,39 +152,39 @@ const keyValidation = computed(() => {
   }
 
   // Provider-specific validation
-  if (provider === 'Anthropic Claude API Key') {
+  if (provider === 'Anthropic') {
     // Claude keys: sk-ant- prefix, typically 80+ characters
-    if (key.length < 80) return { isValid: false, message: 'Claude key seems too short' }
-    if (key.length > 200) return { isValid: false, message: 'Claude key seems too long' }
-    return { isValid: true, message: 'Valid Claude API key format' }
+    if (key.length < 80) return { isValid: false, message: 'Key seems too short' }
+    if (key.length > 200) return { isValid: false, message: 'Key seems too long' }
+    return { isValid: true, message: 'Valid API key format' }
   }
 
-  if (provider === 'OpenAI API Key') {
+  if (provider === 'OpenAI') {
     // OpenAI keys: typically 48+ characters
-    if (key.length < 48) return { isValid: false, message: 'OpenAI key seems too short' }
-    if (key.length > 200) return { isValid: false, message: 'OpenAI key seems too long' }
-    return { isValid: true, message: 'Valid OpenAI API key format' }
+    if (key.length < 48) return { isValid: false, message: 'Key seems too short' }
+    if (key.length > 200) return { isValid: false, message: 'Key seems too long' }
+    return { isValid: true, message: 'Valid API key format' }
   }
 
-  if (provider === 'Google Gemini API Key') {
+  if (provider === 'Google') {
     // Gemini keys: typically 39+ characters
-    if (key.length < 35) return { isValid: false, message: 'Gemini key seems too short' }
-    if (key.length > 200) return { isValid: false, message: 'Gemini key seems too long' }
-    return { isValid: true, message: 'Valid Gemini API key format' }
+    if (key.length < 35) return { isValid: false, message: 'Key seems too short' }
+    if (key.length > 200) return { isValid: false, message: 'Key seems too long' }
+    return { isValid: true, message: 'Valid API key format' }
   }
 
-  if (provider === 'xAI Grok API Key') {
+  if (provider === 'xAI') {
     // Grok keys: xai- prefix, typically 80+ characters
-    if (key.length < 50) return { isValid: false, message: 'Grok key seems too short' }
-    if (key.length > 200) return { isValid: false, message: 'Grok key seems too long' }
-    return { isValid: true, message: 'Valid Grok API key format' }
+    if (key.length < 50) return { isValid: false, message: 'Key seems too short' }
+    if (key.length > 200) return { isValid: false, message: 'Key seems too long' }
+    return { isValid: true, message: 'Valid API key format' }
   }
 
-  if (provider === 'Deepseek API Key') {
+  if (provider === 'Deepseek') {
     // Deepseek keys: variable format, at least 20 characters
-    if (key.length < 20) return { isValid: false, message: 'Deepseek key seems too short' }
-    if (key.length > 200) return { isValid: false, message: 'Deepseek key seems too long' }
-    return { isValid: true, message: 'Valid Deepseek API key format' }
+    if (key.length < 20) return { isValid: false, message: 'Key seems too short' }
+    if (key.length > 200) return { isValid: false, message: 'Key seems too long' }
+    return { isValid: true, message: 'Valid API key format' }
   }
 
   return null
@@ -180,6 +206,11 @@ const columns = [
     header: 'Key',
     id: 'key_hint',
   },
+  {
+    accessorKey: 'actions',
+    header: '',
+    id: 'actions',
+  },
 ]
 
 const emit = defineEmits<{
@@ -187,6 +218,63 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
+
+const handleToggleStatus = async (keyId: string, isActive: boolean) => {
+  const { apiFetch } = useApi()
+  togglingKeyId.value = keyId
+
+  try {
+    await apiFetch(`/api/keys/${keyId}`, {
+      method: 'PATCH',
+      body: {
+        is_active: isActive,
+      },
+    })
+
+    useToast().add({
+      title: isActive ? 'Key enabled' : 'Key disabled',
+      color: 'success',
+    })
+
+    emit('key-added')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update key status'
+    useToast().add({
+      title: 'Error',
+      description: message,
+      color: 'error',
+    })
+  } finally {
+    togglingKeyId.value = null
+  }
+}
+
+const handleRevoke = async (keyId: string) => {
+  const { apiFetch } = useApi()
+  revokingKeyId.value = keyId
+
+  try {
+    await apiFetch(`/api/keys/${keyId}`, {
+      method: 'DELETE',
+    })
+
+    useToast().add({
+      title: 'Key revoked',
+      color: 'success',
+    })
+
+    emit('key-added')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to revoke key'
+    useToast().add({
+      title: 'Error',
+      description: message,
+      color: 'error',
+    })
+  } finally {
+    revokingKeyId.value = null
+  }
+}
 
 const handleAddKey = async () => {
   const { apiFetch } = useApi()

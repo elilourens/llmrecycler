@@ -97,4 +97,73 @@ keysRouter.post("/", async (c) => {
   }
 });
 
+// DELETE /api/keys/:id - delete a seller key and its vault secret
+keysRouter.delete("/:id", async (c) => {
+  const userId = c.get("userId");
+  const keyId = c.req.param("id");
+
+  try {
+    // Validate UUID format (basic check)
+    if (!keyId || keyId.length !== 36) {
+      return c.json({ error: "Invalid key ID format" }, 400);
+    }
+
+    // Call stored procedure to delete key and vault secret atomically
+    const { error: rpcError } = await supabase.rpc("delete_seller_key", {
+      p_key_id: keyId,
+      p_user_id: userId,
+    });
+
+    if (rpcError) {
+      console.error("Error deleting seller key:", rpcError);
+      return c.json({ error: "Failed to delete seller key" }, 500);
+    }
+
+    return c.json({ success: true }, 200);
+  } catch (err) {
+    console.error("Error deleting seller key:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return c.json({ error: `Failed to delete seller key: ${message}` }, 500);
+  }
+});
+
+// PATCH /api/keys/:id - toggle seller key active status
+keysRouter.patch("/:id", async (c) => {
+  const userId = c.get("userId");
+  const keyId = c.req.param("id");
+
+  try {
+    // Validate UUID format (basic check)
+    if (!keyId || keyId.length !== 36) {
+      return c.json({ error: "Invalid key ID format" }, 400);
+    }
+
+    const body = await c.req.json();
+    const { is_active } = body;
+
+    // Validate is_active is a boolean
+    if (typeof is_active !== "boolean") {
+      return c.json({ error: "Invalid request: is_active must be a boolean" }, 400);
+    }
+
+    // Verify the key belongs to the user and update status
+    const { error: updateError } = await supabase
+      .from("seller_keys")
+      .update({ is_active })
+      .eq("id", keyId)
+      .eq("user_id", userId);
+
+    if (updateError) {
+      console.error("Error updating seller key status:", updateError);
+      return c.json({ error: "Failed to update seller key status" }, 500);
+    }
+
+    return c.json({ success: true }, 200);
+  } catch (err) {
+    console.error("Error updating seller key status:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return c.json({ error: `Failed to update seller key status: ${message}` }, 500);
+  }
+});
+
 export default keysRouter;

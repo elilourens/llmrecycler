@@ -27,6 +27,11 @@
           :keys="sellerKeys"
           @key-added="fetchKeys"
         />
+
+        <BuyerKeys
+          :keys="buyerKeys"
+          @key-generated="fetchBuyerKeys"
+        />
       </div>
     </div>
   </div>
@@ -38,6 +43,7 @@ const { user, signOut } = useAuth()
 const { apiFetch } = useApi()
 
 const sellerKeys = ref<Array<{ id: string; is_active: boolean; key_hint: string; provider: string; created_at: string }>>([])
+const buyerKeys = ref<Array<{ id: string; name: string; is_active: boolean; key_hint: string; created_at: string }>>([])
 const loading = ref(true)
 
 const fetchKeys = async () => {
@@ -53,8 +59,19 @@ const fetchKeys = async () => {
   }
 }
 
+const fetchBuyerKeys = async () => {
+  try {
+    const { keys } = await apiFetch('/api/buyer-keys')
+    buyerKeys.value = keys || []
+  } catch (error) {
+    console.error('Failed to fetch buyer keys:', error)
+    buyerKeys.value = []
+  }
+}
+
 onMounted(() => {
   fetchKeys()
+  fetchBuyerKeys()
 })
 
 const handleLogout = async () => {
