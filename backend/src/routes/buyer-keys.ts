@@ -15,8 +15,9 @@ buyerKeysRouter.get("/", async (c) => {
   try {
     const { data, error } = await supabase
       .from("buyer_keys")
-      .select("id, name, key_hint, is_active, created_at")
+      .select("id, name, key_hint, status, created_at")
       .eq("user_id", userId)
+      .neq("status", "hidden")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -77,7 +78,7 @@ buyerKeysRouter.post("/", async (c) => {
     // Fetch the created record
     const { data: record, error: fetchError } = await supabase
       .from("buyer_keys")
-      .select("id, name, key_hint, is_active, created_at")
+      .select("id, name, key_hint, status, created_at")
       .eq("id", keyId)
       .single();
 
@@ -95,7 +96,7 @@ buyerKeysRouter.post("/", async (c) => {
   }
 });
 
-// DELETE /api/buyer-keys/:id - revoke a buyer key
+// DELETE /api/buyer-keys/:id - hide a buyer key
 buyerKeysRouter.delete("/:id", async (c) => {
   const userId = c.get("userId");
   const keyId = c.req.param("id");
@@ -106,22 +107,62 @@ buyerKeysRouter.delete("/:id", async (c) => {
       return c.json({ error: "Invalid key ID format" }, 400);
     }
 
-    // Call stored procedure to revoke the key
-    const { error: rpcError } = await supabase.rpc("revoke_buyer_key", {
-      p_key_id: keyId,
-      p_user_id: userId,
-    });
+    // Set status to 'hidden' instead of deleting
+    const { error: updateError } = await supabase
+      .from("buyer_keys")
+      .update({ status: "hidden" })
+      .eq("id", keyId)
+      .eq("user_id", userId);
 
-    if (rpcError) {
-      console.error("Error revoking buyer key:", rpcError);
-      return c.json({ error: "Failed to revoke buyer key" }, 500);
+    if (updateError) {
+      console.error("Error hiding buyer key:", updateError);
+      return c.json({ error: "Failed to hide buyer key" }, 500);
     }
 
     return c.json({ success: true }, 204);
   } catch (err) {
-    console.error("Error revoking buyer key:", err);
+    console.error("Error hiding buyer key:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
-    return c.json({ error: `Failed to revoke buyer key: ${message}` }, 500);
+    return c.json({ error: `Failed to hide buyer key: ${message}` }, 500);
+  }
+});
+
+// PATCH /api/buyer-keys/:id - toggle buyer key status between active and deactivated
+buyerKeysRouter.patch("/:id", async (c) => {
+  const userId = c.get("userId");
+  const keyId = c.req.param("id");
+
+  try {
+    // Validate UUID format (basic check)
+    if (!keyId || keyId.length !== 36) {
+      return c.json({ error: "Invalid key ID format" }, 400);
+    }
+
+    const body = await c.req.json();
+    const { status } = body;
+
+    // Validate status is a valid value (only active or deactivated allowed for toggle)
+    if (!status || !["active", "deactivated"].includes(status)) {
+      return c.json({ error: "Invalid request: status must be 'active' or 'deactivated'" }, 400);
+    }
+
+    // Verify the key belongs to the user and update status
+    const { error: updateError } = await supabase
+      .from("buyer_keys")
+      .update({ status })
+      .eq("id", keyId)
+      .eq("user_id", userId);
+
+    if (updateError) {
+      console.error("Error updating buyer key status:", updateError);
+      return c.json({ error: "Failed to update buyer key status" }, 500);
+    }
+
+    return c.json({ success: true }, 200);
+  } catch (err) {
+    console.error("Error updating buyer key status:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return c.json({ error: `Failed to update buyer key status: ${message}` }, 500);
   }
 });
 

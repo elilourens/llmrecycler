@@ -14,8 +14,9 @@ keysRouter.get("/", async (c) => {
   try {
     const { data, error } = await supabase
       .from("seller_keys")
-      .select("id, provider, key_hint, is_active, created_at")
+      .select("id, provider, key_hint, status, created_at")
       .eq("user_id", userId)
+      .neq("status", "hidden")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -80,7 +81,7 @@ keysRouter.post("/", async (c) => {
     // Fetch the created record
     const { data: record, error: fetchError } = await supabase
       .from("seller_keys")
-      .select("id, provider, key_hint, is_active, created_at")
+      .select("id, provider, key_hint, status, created_at")
       .eq("id", keyId)
       .single();
 
@@ -97,7 +98,7 @@ keysRouter.post("/", async (c) => {
   }
 });
 
-// DELETE /api/keys/:id - delete a seller key and its vault secret
+// DELETE /api/keys/:id - hide a seller key
 keysRouter.delete("/:id", async (c) => {
   const userId = c.get("userId");
   const keyId = c.req.param("id");
@@ -108,26 +109,27 @@ keysRouter.delete("/:id", async (c) => {
       return c.json({ error: "Invalid key ID format" }, 400);
     }
 
-    // Call stored procedure to delete key and vault secret atomically
-    const { error: rpcError } = await supabase.rpc("delete_seller_key", {
-      p_key_id: keyId,
-      p_user_id: userId,
-    });
+    // Set status to 'hidden' instead of deleting
+    const { error: updateError } = await supabase
+      .from("seller_keys")
+      .update({ status: "hidden" })
+      .eq("id", keyId)
+      .eq("user_id", userId);
 
-    if (rpcError) {
-      console.error("Error deleting seller key:", rpcError);
-      return c.json({ error: "Failed to delete seller key" }, 500);
+    if (updateError) {
+      console.error("Error hiding seller key:", updateError);
+      return c.json({ error: "Failed to hide seller key" }, 500);
     }
 
     return c.json({ success: true }, 200);
   } catch (err) {
-    console.error("Error deleting seller key:", err);
+    console.error("Error hiding seller key:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
-    return c.json({ error: `Failed to delete seller key: ${message}` }, 500);
+    return c.json({ error: `Failed to hide seller key: ${message}` }, 500);
   }
 });
 
-// PATCH /api/keys/:id - toggle seller key active status
+// PATCH /api/keys/:id - toggle seller key status between active and deactivated
 keysRouter.patch("/:id", async (c) => {
   const userId = c.get("userId");
   const keyId = c.req.param("id");
@@ -139,17 +141,17 @@ keysRouter.patch("/:id", async (c) => {
     }
 
     const body = await c.req.json();
-    const { is_active } = body;
+    const { status } = body;
 
-    // Validate is_active is a boolean
-    if (typeof is_active !== "boolean") {
-      return c.json({ error: "Invalid request: is_active must be a boolean" }, 400);
+    // Validate status is a valid value (only active or deactivated allowed for toggle)
+    if (!status || !["active", "deactivated"].includes(status)) {
+      return c.json({ error: "Invalid request: status must be 'active' or 'deactivated'" }, 400);
     }
 
     // Verify the key belongs to the user and update status
     const { error: updateError } = await supabase
       .from("seller_keys")
-      .update({ is_active })
+      .update({ status })
       .eq("id", keyId)
       .eq("user_id", userId);
 

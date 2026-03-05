@@ -19,13 +19,13 @@
         :ui="{ td: 'text-xs', th: 'text-xs' }"
         sticky="header"
       >
-        <template #is_active-cell="{ row }">
+        <template #status-cell="{ row }">
           <UBadge
-            :color="row.original.is_active ? 'primary' : 'neutral'"
+            :color="row.original.status === 'active' ? 'primary' : 'warning'"
             variant="subtle"
             class="text-xs"
           >
-            {{ row.original.is_active ? 'Active' : 'Revoked' }}
+            {{ row.original.status === 'active' ? 'Active' : 'Deactivated' }}
           </UBadge>
         </template>
 
@@ -46,16 +46,26 @@
         </template>
 
         <template #actions-cell="{ row }">
-          <UButton
-            v-if="row.original.is_active"
-            size="xs"
-            color="error"
-            variant="outline"
-            @click="handleRevoke(row.original.id)"
-            :loading="revokingKeyId === row.original.id"
-          >
-            Revoke
-          </UButton>
+          <div class="flex gap-2">
+            <UButton
+              size="xs"
+              :color="row.original.status === 'active' ? 'warning' : 'success'"
+              variant="outline"
+              @click="handleToggleStatus(row.original.id, row.original.status === 'active' ? 'deactivated' : 'active')"
+              :loading="togglingKeyId === row.original.id"
+            >
+              {{ row.original.status === 'active' ? 'Disable' : 'Enable' }}
+            </UButton>
+            <UButton
+              size="xs"
+              color="error"
+              variant="outline"
+              @click="handleDelete(row.original.id)"
+              :loading="deletingKeyId === row.original.id"
+            >
+              Delete
+            </UButton>
+          </div>
         </template>
       </UTable>
     </div>
@@ -124,7 +134,7 @@
 interface BuyerKey {
   id: string
   name: string
-  is_active: boolean
+  status: 'active' | 'deactivated' | 'hidden'
   key_hint: string
   created_at: string
 }
@@ -140,13 +150,14 @@ const keyName = ref('')
 const newlyGeneratedKey = ref('')
 const loading = ref(false)
 const copying = ref(false)
-const revokingKeyId = ref<string | null>(null)
+const togglingKeyId = ref<string | null>(null)
+const deletingKeyId = ref<string | null>(null)
 
 const columns = [
   {
-    accessorKey: 'is_active',
+    accessorKey: 'status',
     header: 'Status',
-    id: 'is_active',
+    id: 'status',
   },
   {
     accessorKey: 'name',
@@ -252,9 +263,39 @@ const handleModalClose = () => {
   newlyGeneratedKey.value = ''
 }
 
-const handleRevoke = async (keyId: string) => {
+const handleToggleStatus = async (keyId: string, status: 'active' | 'deactivated') => {
   const { apiFetch } = useApi()
-  revokingKeyId.value = keyId
+  togglingKeyId.value = keyId
+
+  try {
+    await apiFetch(`/api/buyer-keys/${keyId}`, {
+      method: 'PATCH',
+      body: {
+        status,
+      },
+    })
+
+    useToast().add({
+      title: status === 'active' ? 'Key enabled' : 'Key disabled',
+      color: 'success',
+    })
+
+    emit('key-generated')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update key status'
+    useToast().add({
+      title: 'Error',
+      description: message,
+      color: 'error',
+    })
+  } finally {
+    togglingKeyId.value = null
+  }
+}
+
+const handleDelete = async (keyId: string) => {
+  const { apiFetch } = useApi()
+  deletingKeyId.value = keyId
 
   try {
     await apiFetch(`/api/buyer-keys/${keyId}`, {
@@ -262,20 +303,20 @@ const handleRevoke = async (keyId: string) => {
     })
 
     useToast().add({
-      title: 'Key revoked',
+      title: 'Key deleted',
       color: 'success',
     })
 
     emit('key-generated')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to revoke key'
+    const message = error instanceof Error ? error.message : 'Failed to delete key'
     useToast().add({
       title: 'Error',
       description: message,
       color: 'error',
     })
   } finally {
-    revokingKeyId.value = null
+    deletingKeyId.value = null
   }
 }
 </script>

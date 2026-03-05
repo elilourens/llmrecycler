@@ -14,9 +14,9 @@
 
     <div class="max-h-48 overflow-y-auto">
       <UTable :data="keys" :columns="columns" :ui="{ td: 'text-xs', th: 'text-xs' }" sticky="header">
-      <template #is_active-cell="{ row }">
-        <UBadge :color="row.original.is_active ? 'primary' : 'neutral'" variant="subtle" class="text-xs">
-          {{ row.original.is_active ? 'Active' : 'Inactive' }}
+      <template #status-cell="{ row }">
+        <UBadge :color="row.original.status === 'active' ? 'primary' : 'warning'" variant="subtle" class="text-xs">
+          {{ row.original.status === 'active' ? 'Active' : 'Deactivated' }}
         </UBadge>
       </template>
 
@@ -34,21 +34,21 @@
         <div class="flex gap-2">
           <UButton
             size="xs"
-            :color="row.original.is_active ? 'warning' : 'success'"
+            :color="row.original.status === 'active' ? 'warning' : 'success'"
             variant="outline"
-            @click="handleToggleStatus(row.original.id, !row.original.is_active)"
+            @click="handleToggleStatus(row.original.id, row.original.status === 'active' ? 'deactivated' : 'active')"
             :loading="togglingKeyId === row.original.id"
           >
-            {{ row.original.is_active ? 'Disable' : 'Enable' }}
+            {{ row.original.status === 'active' ? 'Disable' : 'Enable' }}
           </UButton>
           <UButton
             size="xs"
             color="error"
             variant="outline"
-            @click="handleRevoke(row.original.id)"
-            :loading="revokingKeyId === row.original.id"
+            @click="handleDelete(row.original.id)"
+            :loading="deletingKeyId === row.original.id"
           >
-            Revoke
+            Delete
           </UButton>
         </div>
       </template>
@@ -103,7 +103,7 @@
 <script setup lang="ts">
 interface SellerKey {
   id: string
-  is_active: boolean
+  status: 'active' | 'deactivated' | 'hidden'
   key_hint: string
   provider: string
 }
@@ -117,7 +117,7 @@ defineProps<Props>()
 const isOpen = ref(false)
 const apiKey = ref('')
 const togglingKeyId = ref<string | null>(null)
-const revokingKeyId = ref<string | null>(null)
+const deletingKeyId = ref<string | null>(null)
 
 const detectedProvider = computed(() => {
   const key = apiKey.value.trim().toLowerCase()
@@ -192,9 +192,9 @@ const keyValidation = computed(() => {
 
 const columns = [
   {
-    accessorKey: 'is_active',
+    accessorKey: 'status',
     header: 'Status',
-    id: 'is_active',
+    id: 'status',
   },
   {
     accessorKey: 'provider',
@@ -219,7 +219,7 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 
-const handleToggleStatus = async (keyId: string, isActive: boolean) => {
+const handleToggleStatus = async (keyId: string, status: 'active' | 'deactivated') => {
   const { apiFetch } = useApi()
   togglingKeyId.value = keyId
 
@@ -227,12 +227,12 @@ const handleToggleStatus = async (keyId: string, isActive: boolean) => {
     await apiFetch(`/api/keys/${keyId}`, {
       method: 'PATCH',
       body: {
-        is_active: isActive,
+        status,
       },
     })
 
     useToast().add({
-      title: isActive ? 'Key enabled' : 'Key disabled',
+      title: status === 'active' ? 'Key enabled' : 'Key disabled',
       color: 'success',
     })
 
@@ -249,9 +249,9 @@ const handleToggleStatus = async (keyId: string, isActive: boolean) => {
   }
 }
 
-const handleRevoke = async (keyId: string) => {
+const handleDelete = async (keyId: string) => {
   const { apiFetch } = useApi()
-  revokingKeyId.value = keyId
+  deletingKeyId.value = keyId
 
   try {
     await apiFetch(`/api/keys/${keyId}`, {
@@ -259,20 +259,20 @@ const handleRevoke = async (keyId: string) => {
     })
 
     useToast().add({
-      title: 'Key revoked',
+      title: 'Key deleted',
       color: 'success',
     })
 
     emit('key-added')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to revoke key'
+    const message = error instanceof Error ? error.message : 'Failed to delete key'
     useToast().add({
       title: 'Error',
       description: message,
       color: 'error',
     })
   } finally {
-    revokingKeyId.value = null
+    deletingKeyId.value = null
   }
 }
 
