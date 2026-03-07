@@ -15,7 +15,7 @@
     <div class="max-h-48 overflow-y-auto">
       <UTable :data="keys" :columns="columns" :ui="{ td: 'text-xs', th: 'text-xs' }" sticky="header">
       <template #status-cell="{ row }">
-        <UBadge :color="row.original.status === 'active' ? 'primary' : 'warning'" variant="subtle" class="text-xs">
+        <UBadge color="neutral" variant="subtle" class="text-xs">
           {{ row.original.status === 'active' ? 'Active' : 'Deactivated' }}
         </UBadge>
       </template>
@@ -34,7 +34,7 @@
         <div class="flex gap-2">
           <UButton
             size="xs"
-            :color="row.original.status === 'active' ? 'warning' : 'success'"
+            color="neutral"
             variant="outline"
             @click="handleToggleStatus(row.original.id, row.original.status === 'active' ? 'deactivated' : 'active')"
             :loading="togglingKeyId === row.original.id"
@@ -208,7 +208,7 @@ const columns = [
   },
   {
     accessorKey: 'actions',
-    header: '',
+    header: 'Actions',
     id: 'actions',
   },
 ]

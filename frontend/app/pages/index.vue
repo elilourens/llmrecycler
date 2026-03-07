@@ -1,51 +1,16 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-white to-slate-50 flex items-center justify-center px-4">
     <div class="max-w-4xl w-full text-center overflow-hidden">
-      <h1 class="text-4xl md:text-5xl font-bold text-slate-900 mb-4">API Recycler</h1>
-      <pre class="font-mono text-primary text-[0.35rem] md:text-[0.45rem] lg:text-[0.55rem] leading-[1.1] mb-2 inline-block">
-                                                                                                           
-                                   +@@%%%%%%%%%%%%%%@@@@@#                                          
-                                 #@*****************%@..@@%#**#@*                                   
-                                @#*****************@ :@#********#@                                  
-                               @*****************#@ %%************@                                 
-                              @******************@ @#**************@.                               
-                             @*****************#@ @*****************@*  %@@                         
-                            @*****************#@   @*****************#%**@                          
-                           @*****************#@     @*******************@                           
-                          @@****************#@       @*****************@                            
-                             @@************#@         @***************@                             
-                                @@#*******%@           @*************@                              
-                                   #@%***%%          +@#************@                               
-                @@*************@      -@@#         %%@@@@@@@@@@@@@@@      :@@@                      
-                  *@************@                                      :@@***#@                     
-                  -@*************@                                  .@@********@                    
-                  @***************@                               @@************@:                  
-                 @****************#@                           @@****************@-                 
-                @******************#@                          @%*****************@+                
-               @*****************@@@#@                          #@*****************@=               
-              :@****************@:   #@                          +@*****************@               
-               @***************@                                  :@****************@               
-                @%************@                                     @***************@               
-                + @@*********@                           -@          @*************@                
-                 @@. :*%%%@@@                           -@@           @***********@                 
-                  @*%@@@@@@@@@@@@@@@@@@@@@@@@          =@*@........... @#********@                  
-                  :@************************@         =@**************@ @%******@                   
-                   .@***********************@        +@****************@ #%****@                    
-                    .@**********************@       *@******************@ @***@                     
-                     .@*********************@      *%*******************%*:%#@                      
-                      -@********************@     *%********************#@ @@                       
-                       :@*******************@      @********************##+@                        
-                        :@******************@       @#******************@                           
-                          @%****************@        @#****************@.                           
-                             #@@@@@@@@@@@@@@@         #%***##%@@@@@@@@:                             
-                                                       +@*#@                                        
-                                                        :@%=                                        
-                                                          @                                         
-                                                                                                                                  
-      </pre>
-      <p class="text-lg md:text-xl text-slate-600">Resell your API credits for cash.</p>
-      <p class="text-lg md:text-xl text-slate-600 ">Or.</p>
-      <p class="md:text-xl text-slate-600 mb-4">Buy API credits for half price.</p>
+      <h1 class="text-5xl md:text-6xl font-bold text-primary mb-8">API Recycler</h1>
+      <div class="mb-8">
+        <VideoAscii video-src="/0307.mp4" :width="60" :height="30" />
+      </div>
+
+      <div class="max-w-2xl mx-auto mb-8">
+        <p class="text-lg md:text-xl font-medium text-slate-900 mb-2">Resell your API credits for cash.</p>
+        <p class="text-slate-400 mb-3">or</p>
+        <p class="text-lg md:text-xl font-medium text-slate-900">Buy API credits for half price.</p>
+      </div>
       <div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
         <a href="/auth/login">
           <UButton

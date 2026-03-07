@@ -21,7 +21,7 @@
       >
         <template #status-cell="{ row }">
           <UBadge
-            :color="row.original.status === 'active' ? 'primary' : 'warning'"
+            color="neutral"
             variant="subtle"
             class="text-xs"
           >
@@ -43,7 +43,7 @@
           <div class="flex gap-2">
             <UButton
               size="xs"
-              :color="row.original.status === 'active' ? 'warning' : 'success'"
+              color="neutral"
               variant="outline"
               @click="handleToggleStatus(row.original.id, row.original.status === 'active' ? 'deactivated' : 'active')"
               :loading="togglingKeyId === row.original.id"
@@ -164,7 +164,7 @@ const columns = [
   },
   {
     accessorKey: 'actions',
-    header: '',
+    header: 'Actions',
     id: 'actions',
   },
 ]
