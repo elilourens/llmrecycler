@@ -18,9 +18,10 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Balance
-          :balance="0.00"
-          :total-earned="0.00"
-          :total-spent="0.00"
+          :balance="balance"
+          :total-earned="totalEarned"
+          :total-spent="totalSpent"
+          @refresh="fetchBalance"
         />
 
         <SellerKeys
@@ -42,6 +43,9 @@ const loggingOut = ref(false)
 const { user, signOut } = useAuth()
 const { apiFetch } = useApi()
 
+const balance = ref(0)
+const totalEarned = ref(0)
+const totalSpent = ref(0)
 const sellerKeys = ref<Array<{ id: string; is_active: boolean; key_hint: string; provider: string; created_at: string }>>([])
 const buyerKeys = ref<Array<{ id: string; name: string; is_active: boolean; key_hint: string; created_at: string }>>([])
 const loading = ref(true)
@@ -69,9 +73,21 @@ const fetchBuyerKeys = async () => {
   }
 }
 
+const fetchBalance = async () => {
+  try {
+    const data = await apiFetch('/api/profile')
+    balance.value = data.balance || 0
+    totalEarned.value = data.totalEarned || 0
+    totalSpent.value = data.totalSpent || 0
+  } catch (error) {
+    console.error('Failed to fetch balance:', error)
+  }
+}
+
 onMounted(() => {
   fetchKeys()
   fetchBuyerKeys()
+  fetchBalance()
 })
 
 const handleLogout = async () => {

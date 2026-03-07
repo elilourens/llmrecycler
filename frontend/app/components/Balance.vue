@@ -1,8 +1,15 @@
 <template>
   <UCard>
     <template #header>
-      <div class="bg-gray-50 -mx-6 -my-4 px-6 py-4">
+      <div class="bg-gray-50 -mx-6 -my-4 px-6 py-4 flex items-center justify-between">
         <h2 class="text-lg font-semibold text-highlighted">Balance</h2>
+        <UButton
+          icon="i-heroicons-arrow-path"
+          color="primary"
+          variant="ghost"
+          size="sm"
+          @click="$emit('refresh')"
+        />
       </div>
     </template>
 

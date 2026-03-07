@@ -15,10 +15,9 @@ buyerKeysRouter.get("/", async (c) => {
   try {
     const { data, error } = await supabase
       .from("buyer_keys")
-      .select("id, name, key_hint, status, created_at")
+      .select("id, name, key_hint, status")
       .eq("user_id", userId)
-      .neq("status", "hidden")
-      .order("created_at", { ascending: false });
+      .neq("status", "hidden");
 
     if (error) {
       console.error("Error fetching buyer keys:", error);
@@ -78,7 +77,7 @@ buyerKeysRouter.post("/", async (c) => {
     // Fetch the created record
     const { data: record, error: fetchError } = await supabase
       .from("buyer_keys")
-      .select("id, name, key_hint, status, created_at")
+      .select("id, name, key_hint, status")
       .eq("id", keyId)
       .single();
 
