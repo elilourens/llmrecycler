@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Recycler Test Site</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      margin-bottom: 40px;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .panel h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #f1f5f9;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      color: #cbd5e1;
+    }
+
+    select, input[type="text"], textarea {
+      width: 100%;
+      padding: 10px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 120px;
+      font-family: 'Monaco', 'Courier New', monospace;
+    }
+
+    select:focus, input[type="text"]:focus, textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    input[type="file"] {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .file-upload {
+      position: relative;
+      padding: 10px;
+      border: 2px dashed #334155;
+      border-radius: 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .file-upload:hover {
+      border-color: #3b82f6;
+    }
+
+    .file-list {
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      background: #0f172a;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+
+    .file-remove {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #3b82f6;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    button:hover:not(:disabled) {
+      background: #2563eb;
+    }
+
+    button:disabled {
+      background: #475569;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .response-area {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 15px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+
+    .response-empty {
+      color: #64748b;
+      font-style: italic;
+    }
+
+    .loading {
+      color: #3b82f6;
+      animation: pulse 2s infinite;
+    }
+
+    .error {
+      color: #ef4444;
+    }
+
+    .success {
+      color: #10b981;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+
+    .status {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #334155;
+    }
+
+    .stat {
+      font-size: 13px;
+    }
+
+    .stat-label {
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      color: #f1f5f9;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔄 API Recycler Test Site</h1>
+      <p class="subtitle">Test your API providers through the proxy</p>
+    </header>
+
+    <div class="main-content">
+      <!-- Input Panel -->
+      <div class="panel">
+        <h2>Test Request</h2>
+
+        <div class="form-group">
+          <label for="provider">Provider</label>
+          <select id="provider" onchange="updateModels()">
+            <option value="">Select a provider...</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="grok">Grok</option>
+            <option value="deepseek">DeepSeek</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="model">Model</label>
+          <select id="model">
+            <option value="">Select a provider first...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="message">Message</label>
+          <textarea id="message" placeholder="Enter your message here..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Attachments</label>
+          <div class="file-upload" id="dropZone">
+            <input type="file" id="fileInput" multiple accept="image/*,.pdf,.txt,.json" style="display: none;">
+            <p>Click to upload or drag files here</p>
+          </div>
+          <div class="file-list" id="fileList"></div>
+        </div>
+
+        <button id="sendBtn" onclick="sendTest()">Send Test</button>
+
+        <div class="status">
+          <div class="stat">
+            <div class="stat-label">Status</div>
+            <div class="stat-value" id="status">Ready</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Response Time</div>
+            <div class="stat-value" id="responseTime">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Response Panel -->
+      <div class="panel">
+        <h2>Response</h2>
+        <div class="response-area" id="response">
+          <div class="response-empty">Response will appear here...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const files = [];
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const fileList = document.getElementById('fileList');
+
+    const models = {
+      openai: [
+        { value: 'gpt-4o', label: 'GPT-4o' },
+        { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' }
+      ],
+      anthropic: [
+        { value: 'claude-opus-4-1', label: 'Claude Opus 4.1' },
+        { value: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
+        { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' }
+      ],
+      gemini: [
+        { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+        { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' }
+      ],
+      grok: [
+        { value: 'grok-2', label: 'Grok 2' },
+        { value: 'grok-2-vision', label: 'Grok 2 Vision' }
+      ],
+      deepseek: [
+        { value: 'deepseek-chat', label: 'DeepSeek Chat' },
+        { value: 'deepseek-coder', label: 'DeepSeek Coder' }
+      ]
+    };
+
+    function updateModels() {
+      const provider = document.getElementById('provider').value;
+      const modelSelect = document.getElementById('model');
+
+      if (!provider) {
+        modelSelect.innerHTML = '<option value="">Select a provider first...</option>';
+        return;
+      }
+
+      const providerModels = models[provider] || [];
+      modelSelect.innerHTML = providerModels
+        .map(m => `<option value="${m.value}">${m.label}</option>`)
+        .join('');
+    }
+
+    // File upload handling
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = '#3b82f6';
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.borderColor = '#334155';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = '#334155';
+      handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+    });
+
+    function handleFiles(newFiles) {
+      for (let file of newFiles) {
+        if (!files.find(f => f.name === file.name)) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const base64 = e.target.result.split(',')[1];
+            const mimeType = file.type || 'application/octet-stream';
+            files.push({
+              name: file.name,
+              base64: base64,
+              mimeType: mimeType,
+              size: file.size
+            });
+            renderFileList();
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    }
+
+    function renderFileList() {
+      fileList.innerHTML = files.map((file, idx) => `
+        <div class="file-item">
+          <span>${file.name} (${(file.size / 1024).toFixed(1)}KB)</span>
+          <button class="file-remove" onclick="removeFile(${idx})">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    function removeFile(idx) {
+      files.splice(idx, 1);
+      renderFileList();
+    }
+
+    async function sendTest() {
+      const provider = document.getElementById('provider').value;
+      const model = document.getElementById('model').value;
+      const message = document.getElementById('message').value;
+      const statusEl = document.getElementById('status');
+      const responseEl = document.getElementById('response');
+      const responseTimeEl = document.getElementById('responseTime');
+      const sendBtn = document.getElementById('sendBtn');
+
+      if (!provider) {
+        statusEl.textContent = 'Select a provider';
+        statusEl.className = 'stat-value error';
+        return;
+      }
+
+      if (!model) {
+        statusEl.textContent = 'Select a model';
+        statusEl.className = 'stat-value error';
+        return;
+      }
+
+      if (!message.trim()) {
+        statusEl.textContent = 'Message required';
+        statusEl.className = 'stat-value error';
+        return;
+      }
+
+      sendBtn.disabled = true;
+      statusEl.textContent = 'Sending...';
+      statusEl.className = 'stat-value loading';
+      responseEl.innerHTML = '<div class="loading">Loading...</div>';
+
+      const startTime = performance.now();
+
+      try {
+        const response = await fetch(`http://localhost:8000/test/${provider}`, {
+          mode: 'cors',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: model,
+            message: message,
+            images: files.length > 0 ? files.map(f => ({
+              base64: f.base64,
+              mimeType: f.mimeType,
+              name: f.name
+            })) : []
+          })
+        });
+
+        const endTime = performance.now();
+        const data = await response.json();
+
+        responseTimeEl.textContent = `${(endTime - startTime).toFixed(0)}ms`;
+        statusEl.textContent = `${response.status} ${response.statusText}`;
+        statusEl.className = response.ok ? 'stat-value success' : 'stat-value error';
+
+        responseEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      } catch (err) {
+        const endTime = performance.now();
+        responseTimeEl.textContent = `${(endTime - startTime).toFixed(0)}ms`;
+        statusEl.textContent = 'Error';
+        statusEl.className = 'stat-value error';
+        responseEl.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    // Allow Enter key to send
+    document.getElementById('message').addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter') {
+        sendTest();
+      }
+    });
+  </script>
+</body>
+</html>

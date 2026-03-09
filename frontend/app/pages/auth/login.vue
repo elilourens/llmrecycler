@@ -2,7 +2,9 @@
   <div class="min-h-screen flex items-center justify-center bg-white px-4">
     <UCard class="w-full max-w-md">
       <template #header>
-        <h1 class="text-2xl font-bold text-center text-highlighted">Sign In</h1>
+        <div class="-mx-6 -my-4 px-6 py-4" style="background-color: #85BB65;">
+          <h1 class="text-2xl font-bold text-center text-highlighted">Sign In</h1>
+        </div>
       </template>
 
       <UForm :state="{ email, password }" class="space-y-4" @submit="handleLogin">

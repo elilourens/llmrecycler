@@ -262,7 +262,7 @@ proxyRouter.post("*", async (c: any) => {
       );
     }
 
-    // 5. Get pricing information
+    // 5. Get pricing information (will be recalculated with actual tokens after response)
     const pricing = await getPricing(provider, model);
     if (!pricing) {
       const latencyMs = Date.now() - startTime;
@@ -552,13 +552,22 @@ proxyRouter.post("*", async (c: any) => {
       let costCharged: number | null = null;
       let sellerEarning: number | null = null;
       let yourMargin: number | null = null;
+      let finalInputRate = pricing.inputRate;
+      let finalOutputRate = pricing.outputRate;
 
       if (inputTokens !== null && outputTokens !== null) {
+        // Re-check pricing tier with actual input tokens (may differ from estimate)
+        const actualPricing = await getPricing(provider, model, inputTokens);
+        if (actualPricing) {
+          finalInputRate = actualPricing.inputRate;
+          finalOutputRate = actualPricing.outputRate;
+        }
+
         const costs = calculateCosts(
           inputTokens,
           outputTokens,
-          pricing.inputRate,
-          pricing.outputRate
+          finalInputRate,
+          finalOutputRate
         );
         costUpstream = costs.costUpstream;
         costCharged = costs.costCharged;
@@ -581,8 +590,8 @@ proxyRouter.post("*", async (c: any) => {
         200,
         inputTokens,
         outputTokens,
-        pricing.inputRate,
-        pricing.outputRate,
+        finalInputRate,
+        finalOutputRate,
         costUpstream,
         costCharged,
         sellerEarning,
@@ -623,13 +632,22 @@ proxyRouter.post("*", async (c: any) => {
       let costCharged: number | null = null;
       let sellerEarning: number | null = null;
       let yourMargin: number | null = null;
+      let finalInputRate = pricing.inputRate;
+      let finalOutputRate = pricing.outputRate;
 
       if (inputTokens !== null && outputTokens !== null) {
+        // Re-check pricing tier with actual input tokens (may differ from estimate)
+        const actualPricing = await getPricing(provider, model, inputTokens);
+        if (actualPricing) {
+          finalInputRate = actualPricing.inputRate;
+          finalOutputRate = actualPricing.outputRate;
+        }
+
         const costs = calculateCosts(
           inputTokens,
           outputTokens,
-          pricing.inputRate,
-          pricing.outputRate
+          finalInputRate,
+          finalOutputRate
         );
         costUpstream = costs.costUpstream;
         costCharged = costs.costCharged;
@@ -652,8 +670,8 @@ proxyRouter.post("*", async (c: any) => {
         200,
         inputTokens,
         outputTokens,
-        pricing.inputRate,
-        pricing.outputRate,
+        finalInputRate,
+        finalOutputRate,
         costUpstream,
         costCharged,
         sellerEarning,

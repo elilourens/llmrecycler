@@ -3,6 +3,9 @@ import { supabase } from "../supabase";
 interface PricingRecord {
   inputRate: number;
   outputRate: number;
+  contextLengthThreshold?: number | null;
+  overThresholdInputRate?: number | null;
+  overThresholdOutputRate?: number | null;
 }
 
 // Cache for pricing lookups
@@ -10,40 +13,65 @@ const pricingCache = new Map<string, PricingRecord>();
 
 export async function getPricing(
   provider: string,
-  model: string
+  model: string,
+  inputTokens: number = 0
 ): Promise<{ inputRate: number; outputRate: number } | null> {
   const cacheKey = `${provider}:${model}`;
 
-  // Check cache
-  if (pricingCache.has(cacheKey)) {
-    return pricingCache.get(cacheKey)!;
-  }
+  let pricing = pricingCache.get(cacheKey);
 
-  try {
-    const { data, error } = await supabase
-      .from("provider_pricing")
-      .select("input_per_1m, output_per_1m")
-      .eq("provider", provider)
-      .eq("model", model)
-      .is("effective_to", null) // Get current pricing
-      .single();
+  // Fetch pricing for this provider:model if not cached
+  if (!pricing) {
+    try {
+      const { data, error } = await supabase
+        .from("provider_pricing")
+        .select(
+          "input_per_1m, output_per_1m, context_length_threshold, over_threshold_input_per_1m, over_threshold_output_per_1m"
+        )
+        .eq("provider", provider)
+        .eq("model", model)
+        .is("effective_to", null)
+        .single();
 
-    if (error || !data) {
-      console.warn(`No pricing found for ${provider}/${model}`);
+      if (error || !data) {
+        console.warn(`No pricing found for ${provider}/${model}`);
+        return null;
+      }
+
+      pricing = {
+        inputRate: Number(data.input_per_1m),
+        outputRate: Number(data.output_per_1m),
+        contextLengthThreshold: data.context_length_threshold,
+        overThresholdInputRate: data.over_threshold_input_per_1m
+          ? Number(data.over_threshold_input_per_1m)
+          : null,
+        overThresholdOutputRate: data.over_threshold_output_per_1m
+          ? Number(data.over_threshold_output_per_1m)
+          : null,
+      };
+
+      pricingCache.set(cacheKey, pricing);
+    } catch (error) {
+      console.error("Error fetching pricing:", error);
       return null;
     }
-
-    const pricing = {
-      inputRate: Number(data.input_per_1m),
-      outputRate: Number(data.output_per_1m),
-    };
-
-    pricingCache.set(cacheKey, pricing);
-    return pricing;
-  } catch (error) {
-    console.error("Error fetching pricing:", error);
-    return null;
   }
+
+  // Determine which pricing tier to use
+  const useOverThreshold =
+    pricing.contextLengthThreshold &&
+    inputTokens > pricing.contextLengthThreshold &&
+    pricing.overThresholdInputRate &&
+    pricing.overThresholdOutputRate;
+
+  return {
+    inputRate: useOverThreshold
+      ? pricing.overThresholdInputRate!
+      : pricing.inputRate,
+    outputRate: useOverThreshold
+      ? pricing.overThresholdOutputRate!
+      : pricing.outputRate,
+  };
 }
 
 export function calculateCosts(

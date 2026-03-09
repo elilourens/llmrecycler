@@ -1,8 +1,8 @@
 <template>
   <UCard>
     <template #header>
-      <div class="bg-gray-50 -mx-6 -my-4 px-6 py-4 flex justify-between items-center">
-        <h2 class="text-lg font-semibold text-highlighted">Keys Being Sold</h2>
+      <div class="-mx-6 -my-4 px-6 py-4 flex justify-between items-center" style="background-color: #85BB65;">
+        <h2 class="text-lg font-bold text-highlighted">Keys Being Sold</h2>
         <UButton
           color="primary"
           @click="isOpen = true"

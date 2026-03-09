@@ -1,7 +1,8 @@
 {
   "enabledMcpjsonServers": [
     "supabase",
-    "nuxt-ui"
+    "nuxt-ui",
+    "stripe"
   ],
   "enableAllProjectMcpServers": true
 }

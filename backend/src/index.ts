@@ -5,6 +5,7 @@ import keysRouter from "./routes/keys";
 import buyerKeysRouter from "./routes/buyer-keys";
 import proxyRouter from "./routes/proxy";
 import profileRouter from "./routes/profile";
+import stripeRouter from "./routes/stripe";
 
 const app = new Hono();
 
@@ -29,6 +30,7 @@ app.route("/api/keys", keysRouter);
 app.route("/api/buyer-keys", buyerKeysRouter);
 app.route("/api/proxy", proxyRouter);
 app.route("/api/profile", profileRouter);
+app.route("/api/stripe", stripeRouter);
 
 // Example API route
 app.get("/api/test", (c) => {

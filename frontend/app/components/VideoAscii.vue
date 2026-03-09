@@ -9,7 +9,7 @@
       style="display: none"
     />
     <canvas ref="canvasElement" style="display: none" />
-    <pre class="font-mono text-primary text-[0.35rem] md:text-[0.35rem] lg:text-[0.45rem] leading-[1.1] whitespace-pre">{{ asciiArt }}</pre>
+    <pre class="font-mono text-[0.35rem] md:text-[0.35rem] lg:text-[0.45rem] leading-[1.1] whitespace-pre" style="color: #85BB65;">{{ asciiArt }}</pre>
   </div>
 </template>
 

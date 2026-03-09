@@ -8,7 +8,7 @@
 
       <div class="max-w-2xl mx-auto mb-8">
         <p class="text-lg md:text-xl font-medium text-slate-900 mb-2">Resell your API credits for cash.</p>
-        <p class="text-slate-400 mb-3">or</p>
+        <p class="mb-3" style="color: #85BB65;">or</p>
         <p class="text-lg md:text-xl font-medium text-slate-900">Buy API credits for half price.</p>
       </div>
       <div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
