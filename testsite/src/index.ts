@@ -47,145 +47,88 @@ function buildContent(message: string, images: Array<{ base64: string; mimeType:
   return content;
 }
 
-// Test OpenAI
-app.post("/test/openai", async (c) => {
-  const body = await c.req.json();
-  console.log("🧪 Testing OpenAI proxy...");
+// Helper: forward request, streaming or not
+async function forwardRequest(
+  c: any,
+  upstreamPath: string,
+  requestBody: object,
+  label: string
+) {
+  const stream = c.req.query("stream") === "true";
+  console.log(`🧪 Testing ${label} proxy... (stream=${stream})`);
 
-  const content = buildContent(body.message || "Tell me about the rules to reselling api keys", body.images || [], "openai");
+  const body = stream ? { ...requestBody, stream: true } : requestBody;
 
-  const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
+  const response = await fetch(`${PROXY_URL}${upstreamPath}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": BUYER_API_KEY,
-    },
-    body: JSON.stringify({
-      model: body.model || "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: content,
-        },
-      ],
-    }),
+    headers: { "Content-Type": "application/json", "x-api-key": BUYER_API_KEY },
+    body: JSON.stringify(body),
   });
+
+  if (stream) {
+    return new Response(response.body, {
+      status: response.status,
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
 
   const data = await response.json();
   return c.json({ status: response.status, data });
+}
+
+// Test OpenAI
+app.post("/test/openai", async (c) => {
+  const body = await c.req.json();
+  const content = buildContent(body.message || "Tell me about the rules to reselling api keys", body.images || [], "openai");
+  return forwardRequest(c, "/v1/chat/completions", {
+    model: body.model || "gpt-4o-mini",
+    messages: [{ role: "user", content }],
+  }, "OpenAI");
 });
 
 // Test Anthropic
 app.post("/test/anthropic", async (c) => {
   const body = await c.req.json();
-  console.log("🧪 Testing Anthropic proxy...");
-
   const content = buildContent(body.message || "Tell me about the rules to reselling api keys", body.images || [], "anthropic");
-
-  const response = await fetch(`${PROXY_URL}/v1/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": BUYER_API_KEY,
-    },
-    body: JSON.stringify({
-      model: body.model || "claude-haiku-4-5",
-      messages: [
-        {
-          role: "user",
-          content: content,
-        },
-      ],
-      max_tokens: 1024,
-    }),
-  });
-
-  const data = await response.json();
-  return c.json({ status: response.status, data });
+  return forwardRequest(c, "/v1/messages", {
+    model: body.model || "claude-haiku-4-5",
+    messages: [{ role: "user", content }],
+    max_tokens: 1024,
+  }, "Anthropic");
 });
 
 // Test Google Gemini
 app.post("/test/gemini", async (c) => {
   const body = await c.req.json();
-  console.log("🧪 Testing Gemini proxy...");
-
   const content = buildContent(body.message || "Tell me about the rules to reselling api keys", body.images || [], "openai");
-
-  const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": BUYER_API_KEY,
-    },
-    body: JSON.stringify({
-      model: body.model || "gemini-2.0-flash",
-      messages: [
-        {
-          role: "user",
-          content: content,
-        },
-      ],
-    }),
-  });
-
-  const data = await response.json();
-  return c.json({ status: response.status, data });
+  return forwardRequest(c, "/v1/chat/completions", {
+    model: body.model || "gemini-2.0-flash",
+    messages: [{ role: "user", content }],
+  }, "Gemini");
 });
 
 // Test Grok
 app.post("/test/grok", async (c) => {
   const body = await c.req.json();
-  console.log("🧪 Testing Grok proxy...");
-
   const content = buildContent(body.message || "Tell me about the rules to reselling api keys", body.images || [], "openai");
-
-  const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": BUYER_API_KEY,
-    },
-    body: JSON.stringify({
-      model: body.model || "grok-2",
-      messages: [
-        {
-          role: "user",
-          content: content,
-        },
-      ],
-    }),
-  });
-
-  const data = await response.json();
-  return c.json({ status: response.status, data });
+  return forwardRequest(c, "/v1/chat/completions", {
+    model: body.model || "grok-2",
+    messages: [{ role: "user", content }],
+  }, "Grok");
 });
 
 // Test DeepSeek
 app.post("/test/deepseek", async (c) => {
   const body = await c.req.json();
-  console.log("🧪 Testing DeepSeek proxy...");
-
   const content = buildContent(body.message || "Tell me about the rules to reselling api keys", body.images || [], "openai");
-
-  const response = await fetch(`${PROXY_URL}/v1/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": BUYER_API_KEY,
-    },
-    body: JSON.stringify({
-      model: body.model || "deepseek-chat",
-      messages: [
-        {
-          role: "user",
-          content: content,
-        },
-      ],
-    }),
-  });
-
-  const data = await response.json();
-  return c.json({ status: response.status, data });
+  return forwardRequest(c, "/v1/chat/completions", {
+    model: body.model || "deepseek-chat",
+    messages: [{ role: "user", content }],
+  }, "DeepSeek");
 });
 
 // Health check

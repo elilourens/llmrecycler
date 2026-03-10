@@ -275,6 +275,13 @@
           <div class="file-list" id="fileList"></div>
         </div>
 
+        <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+          <label style="margin: 0; display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; font-size: 14px; font-weight: 500;">
+            <input type="checkbox" id="streamToggle" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;">
+            Stream response
+          </label>
+        </div>
+
         <button id="sendBtn" onclick="sendTest()">Send Test</button>
 
         <div class="status">
@@ -403,69 +410,99 @@
       renderFileList();
     }
 
+    function extractDelta(provider, parsed) {
+      if (provider === 'anthropic') {
+        // Anthropic SSE: content_block_delta events
+        if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+          return parsed.delta.text || '';
+        }
+      } else {
+        // OpenAI-compatible: choices[0].delta.content
+        return parsed.choices?.[0]?.delta?.content || '';
+      }
+      return '';
+    }
+
     async function sendTest() {
       const provider = document.getElementById('provider').value;
       const model = document.getElementById('model').value;
       const message = document.getElementById('message').value;
+      const streaming = document.getElementById('streamToggle').checked;
       const statusEl = document.getElementById('status');
       const responseEl = document.getElementById('response');
       const responseTimeEl = document.getElementById('responseTime');
       const sendBtn = document.getElementById('sendBtn');
 
-      if (!provider) {
-        statusEl.textContent = 'Select a provider';
-        statusEl.className = 'stat-value error';
-        return;
-      }
-
-      if (!model) {
-        statusEl.textContent = 'Select a model';
-        statusEl.className = 'stat-value error';
-        return;
-      }
-
-      if (!message.trim()) {
-        statusEl.textContent = 'Message required';
-        statusEl.className = 'stat-value error';
-        return;
-      }
+      if (!provider) { statusEl.textContent = 'Select a provider'; statusEl.className = 'stat-value error'; return; }
+      if (!model) { statusEl.textContent = 'Select a model'; statusEl.className = 'stat-value error'; return; }
+      if (!message.trim()) { statusEl.textContent = 'Message required'; statusEl.className = 'stat-value error'; return; }
 
       sendBtn.disabled = true;
       statusEl.textContent = 'Sending...';
       statusEl.className = 'stat-value loading';
-      responseEl.innerHTML = '<div class="loading">Loading...</div>';
+      responseEl.innerHTML = '';
 
       const startTime = performance.now();
+      const url = `http://localhost:8000/test/${provider}${streaming ? '?stream=true' : ''}`;
 
       try {
-        const response = await fetch(`http://localhost:8000/test/${provider}`, {
+        const response = await fetch(url, {
           mode: 'cors',
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: model,
-            message: message,
-            images: files.length > 0 ? files.map(f => ({
-              base64: f.base64,
-              mimeType: f.mimeType,
-              name: f.name
-            })) : []
+            model,
+            message,
+            images: files.length > 0 ? files.map(f => ({ base64: f.base64, mimeType: f.mimeType, name: f.name })) : []
           })
         });
 
-        const endTime = performance.now();
-        const data = await response.json();
-
-        responseTimeEl.textContent = `${(endTime - startTime).toFixed(0)}ms`;
         statusEl.textContent = `${response.status} ${response.statusText}`;
         statusEl.className = response.ok ? 'stat-value success' : 'stat-value error';
 
-        responseEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        if (streaming && response.ok) {
+          const textEl = document.createElement('div');
+          textEl.style.whiteSpace = 'pre-wrap';
+          responseEl.appendChild(textEl);
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep incomplete last line
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              const payload = line.slice(6).trim();
+              if (payload === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(payload);
+                const delta = extractDelta(provider, parsed);
+                if (delta) {
+                  textEl.textContent += delta;
+                  responseEl.scrollTop = responseEl.scrollHeight;
+                }
+              } catch {}
+            }
+          }
+
+          responseTimeEl.textContent = `${(performance.now() - startTime).toFixed(0)}ms`;
+          if (!textEl.textContent) {
+            responseEl.innerHTML = '<div class="response-empty">No text content in stream</div>';
+          }
+        } else {
+          const data = await response.json();
+          responseTimeEl.textContent = `${(performance.now() - startTime).toFixed(0)}ms`;
+          responseEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
       } catch (err) {
-        const endTime = performance.now();
-        responseTimeEl.textContent = `${(endTime - startTime).toFixed(0)}ms`;
+        responseTimeEl.textContent = `${(performance.now() - startTime).toFixed(0)}ms`;
         statusEl.textContent = 'Error';
         statusEl.className = 'stat-value error';
         responseEl.innerHTML = `<div class="error">Error: ${err.message}</div>`;

@@ -8,8 +8,13 @@ interface PricingRecord {
   overThresholdOutputRate?: number | null;
 }
 
-// Cache for pricing lookups
-const pricingCache = new Map<string, PricingRecord>();
+interface PricingCacheEntry {
+  record: PricingRecord;
+  expiresAt: number;
+}
+
+const PRICING_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const pricingCache = new Map<string, PricingCacheEntry>();
 
 export async function getPricing(
   provider: string,
@@ -18,9 +23,10 @@ export async function getPricing(
 ): Promise<{ inputRate: number; outputRate: number } | null> {
   const cacheKey = `${provider}:${model}`;
 
-  let pricing = pricingCache.get(cacheKey);
+  const cached = pricingCache.get(cacheKey);
+  let pricing: PricingRecord | undefined = cached && cached.expiresAt > Date.now() ? cached.record : undefined;
 
-  // Fetch pricing for this provider:model if not cached
+  // Fetch pricing for this provider:model if not cached or expired
   if (!pricing) {
     try {
       const { data, error } = await supabase
@@ -50,7 +56,7 @@ export async function getPricing(
           : null,
       };
 
-      pricingCache.set(cacheKey, pricing);
+      pricingCache.set(cacheKey, { record: pricing, expiresAt: Date.now() + PRICING_CACHE_TTL_MS });
     } catch (error) {
       console.error("Error fetching pricing:", error);
       return null;

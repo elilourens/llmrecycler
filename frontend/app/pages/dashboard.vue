@@ -33,6 +33,8 @@
           :keys="buyerKeys"
           @key-generated="fetchBuyerKeys"
         />
+
+        <Info />
       </div>
     </div>
   </div>
