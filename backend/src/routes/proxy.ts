@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabase } from "../supabase";
 import { proxyAuthMiddleware, ProxyContext } from "../middleware/proxy-auth";
 import { detectProvider } from "../utils/provider-detection";
@@ -48,6 +49,17 @@ function getProviderBaseUrl(provider: string): string {
   }
 }
 
+function getProviderEndpointPath(provider: string, model: string, requestPath: string, isStreaming: boolean = false): string {
+  // If the request already has a full path, use provider-specific mapping
+  if (provider === "Google") {
+    // Google uses different endpoints for streaming vs non-streaming
+    const endpoint = isStreaming ? "streamGenerateContent" : "generateContent";
+    return `/v1beta/models/${model}:${endpoint}`;
+  }
+  // All others use the path as-is
+  return requestPath;
+}
+
 function extractTokens(
   provider: string,
   response: any
@@ -65,6 +77,35 @@ function extractTokens(
       return { inputTokens: null, outputTokens: null };
   }
 }
+
+function convertGoogleStreamToOpenAI(googleChunk: any): any {
+  // Convert Google's streaming format to OpenAI format
+  if (!googleChunk.candidates || !googleChunk.candidates[0]) {
+    console.log("🔍 Google chunk missing candidates:", JSON.stringify(googleChunk).slice(0, 200));
+    return null;
+  }
+
+  const candidate = googleChunk.candidates[0];
+  const content = candidate.content?.parts?.[0]?.text || "";
+
+  if (!content) {
+    console.log("🔍 Google chunk has no text content:", JSON.stringify(candidate).slice(0, 200));
+    return null;
+  }
+
+  console.log("✅ Extracted text from Google stream:", content.slice(0, 50));
+
+  // Return OpenAI-compatible format
+  return {
+    choices: [
+      {
+        delta: { content },
+        index: 0,
+      },
+    ],
+  };
+}
+
 
 async function deactivateSellerKey(sellerKeyId: string) {
   await supabase.from("seller_keys").update({ status: "deactivated" }).eq("id", sellerKeyId);
@@ -152,9 +193,6 @@ proxyRouter.post("*", async (c: any) => {
     }
     provider = detectedProvider;
 
-    const path = c.req.path.replace(/^\/api\/proxy/, "");
-    const upstreamUrl = `${getProviderBaseUrl(provider)}${path}`;
-    const requestBody = JSON.stringify(body);
     const excludedKeyIds: string[] = [];
 
     for (let attempt = 0; attempt < MAX_KEY_RETRIES; attempt++) {
@@ -172,7 +210,7 @@ proxyRouter.post("*", async (c: any) => {
         return c.json({ error: { type: "service_unavailable", message: "No available API keys for this provider" } }, 503);
       }
 
-      // Fetch vault secret + pricing in parallel (independent operations)
+      // Fetch vault secret + pricing in parallel
       const [apiKey, pricing] = await Promise.all([
         getVaultSecret(sellerKey.id),
         getPricing(provider, model),
@@ -204,164 +242,38 @@ proxyRouter.post("*", async (c: any) => {
         return c.json({ error: { type: "internal_error", message: "Pricing not configured for this model" } }, 500);
       }
 
-      // Forward request to provider
-      let upstreamResponse: Response;
+      // Update last_checked_at (fire-and-forget)
+      supabase.from("seller_keys").update({ last_checked_at: new Date().toISOString() }).eq("id", sellerKey.id);
+
+      // Route to appropriate handler
       try {
-        upstreamResponse = await fetch(upstreamUrl, {
-          method: c.req.method,
-          headers: { "Content-Type": "application/json", ...buildAuthHeader(provider, apiKey) },
-          body: requestBody,
-        });
-      } catch (err) {
-        await logRequest({
-          buyerKeyId: proxyContext.buyerKeyId,
-          sellerKeyId: sellerKey.id,
-          provider,
-          model,
-          latencyMs: Date.now() - startTime,
-          errorMessage: `Network error: ${err instanceof Error ? err.message : "Unknown error"}`,
-        });
-        return c.json({ error: { type: "service_unavailable", message: "Provider service temporarily unavailable" } }, 503);
-      }
-
-      // Success path
-      if (upstreamResponse.ok) {
-        const contentType = upstreamResponse.headers.get("content-type") || "";
-        const isStreaming = contentType.includes("text/event-stream");
-
-        // Update last_checked_at (fire-and-forget)
-        supabase.from("seller_keys").update({ last_checked_at: new Date().toISOString() }).eq("id", sellerKey.id);
-
-        if (isStreaming) {
-          const latencyMs = Date.now() - startTime;
-          let lastUsageData: any = null;
-
-          // Parse usage from each SSE chunk in the transform; log when stream closes
-          const { readable, writable } = new TransformStream({
-            transform(chunk: Uint8Array, controller) {
-              controller.enqueue(chunk);
-              const text = new TextDecoder().decode(chunk);
-              for (const line of text.split("\n")) {
-                if (!line.startsWith("data: ")) continue;
-                const payload = line.slice(6).trim();
-                if (payload === "[DONE]") continue;
-                try {
-                  const parsed = JSON.parse(payload);
-                  if (parsed.usage || parsed.usageMetadata) lastUsageData = parsed;
-                } catch {}
-              }
-            },
-            flush() {
-              // Stream complete — log in background (non-blocking)
-              const tokens = lastUsageData
-                ? extractTokens(provider, lastUsageData)
-                : { inputTokens: null, outputTokens: null };
-              computeFinalCosts(provider, model, tokens.inputTokens, tokens.outputTokens, pricing).then((costs) => {
-                logRequest({
-                  buyerKeyId: proxyContext.buyerKeyId,
-                  sellerKeyId: sellerKey.id,
-                  provider,
-                  model,
-                  statusCode: 200,
-                  inputTokens: tokens.inputTokens,
-                  outputTokens: tokens.outputTokens,
-                  inputRate: costs.inputRate,
-                  outputRate: costs.outputRate,
-                  costUpstream: costs.costUpstream,
-                  costCharged: costs.costCharged,
-                  sellerEarning: costs.sellerEarning,
-                  yourMargin: costs.yourMargin,
-                  latencyMs,
-                });
-              });
-            },
-          });
-
-          upstreamResponse.body!.pipeTo(writable).catch((err) => console.error("Error piping stream:", err));
-
-          return new Response(readable, {
-            status: upstreamResponse.status,
-            headers: {
-              "Content-Type": contentType,
-              "Cache-Control": "no-cache",
-              "X-Accel-Buffering": "no",
-            },
-          });
-        } else {
-          // Non-streaming JSON response
-          const responseText = await upstreamResponse.text();
-          const latencyMs = Date.now() - startTime;
-
-          let responseData: any = {};
-          let tokens = { inputTokens: null as number | null, outputTokens: null as number | null };
-          try {
-            responseData = JSON.parse(responseText);
-            tokens = extractTokens(provider, responseData);
-          } catch {
-            console.error("Error parsing response JSON");
-          }
-
-          const costs = await computeFinalCosts(provider, model, tokens.inputTokens, tokens.outputTokens, pricing);
-          await logRequest({
-            buyerKeyId: proxyContext.buyerKeyId,
-            sellerKeyId: sellerKey.id,
-            provider,
-            model,
-            statusCode: 200,
-            inputTokens: tokens.inputTokens,
-            outputTokens: tokens.outputTokens,
-            inputRate: costs.inputRate,
-            outputRate: costs.outputRate,
-            costUpstream: costs.costUpstream,
-            costCharged: costs.costCharged,
-            sellerEarning: costs.sellerEarning,
-            yourMargin: costs.yourMargin,
-            latencyMs,
-          });
-
-          return c.json(responseData, 200);
+        if (provider === "Google") {
+          return await handleGoogleRequest(c, body, apiKey, model, pricing, proxyContext, startTime, sellerKey.id);
         }
+        return await handleHttpRequest(c, body, provider, apiKey, model, pricing, proxyContext, startTime, sellerKey.id);
+      } catch (err: any) {
+        // Handle key-level errors and retry
+        if (err.status === 429) {
+          if (provider !== "DeepSeek") await deactivateSellerKey(sellerKey.id);
+          excludedKeyIds.push(sellerKey.id);
+          continue;
+        }
+        if (err.status === 402) {
+          await supabase.from("seller_keys").update({ suspended_until: null }).eq("id", sellerKey.id);
+          excludedKeyIds.push(sellerKey.id);
+          continue;
+        }
+        if (err.status === 401 || err.status === 403) {
+          await deactivateSellerKey(sellerKey.id);
+          excludedKeyIds.push(sellerKey.id);
+          continue;
+        }
+        // Non-retryable error
+        throw err;
       }
-
-      // Provider returned a key-level error — retry with next key
-      const statusCode = upstreamResponse.status;
-      const errorBody = await upstreamResponse.text();
-
-      if (statusCode === 429) {
-        if (provider !== "DeepSeek") await deactivateSellerKey(sellerKey.id);
-        excludedKeyIds.push(sellerKey.id);
-        continue;
-      }
-
-      if (statusCode === 402) {
-        // Intentional: null = free-tier keys permanently blocked by LRU filter
-        await supabase.from("seller_keys").update({ suspended_until: null }).eq("id", sellerKey.id);
-        excludedKeyIds.push(sellerKey.id);
-        continue;
-      }
-
-      if (statusCode === 401 || statusCode === 403) {
-        await deactivateSellerKey(sellerKey.id);
-        excludedKeyIds.push(sellerKey.id);
-        continue;
-      }
-
-      // Non-key error (client 4xx, provider 5xx) — pass through immediately
-      await logRequest({
-        buyerKeyId: proxyContext.buyerKeyId,
-        sellerKeyId: sellerKey.id,
-        provider,
-        model,
-        statusCode,
-        inputRate: pricing.inputRate,
-        outputRate: pricing.outputRate,
-        latencyMs: Date.now() - startTime,
-        errorMessage: errorBody,
-      });
-      return new Response(errorBody, { status: statusCode, headers: { "Content-Type": "application/json" } });
     }
 
-    // All retries exhausted — every available key failed
+    // All retries exhausted
     await logRequest({
       buyerKeyId: proxyContext.buyerKeyId,
       provider,
@@ -385,5 +297,351 @@ proxyRouter.post("*", async (c: any) => {
     return c.json({ error: { type: "internal_error", message: "An unexpected error occurred" } }, 500);
   }
 });
+
+// --- Google handler using official SDK ---
+
+async function handleGoogleRequest(c: any, body: any, apiKey: string, model: string, pricing: any, proxyContext: ProxyContext, startTime: number, sellerKeyId: string) {
+  const isStreaming = body.stream === true;
+  const client = new GoogleGenerativeAI(apiKey);
+  const genModel = client.getGenerativeModel({ model });
+
+  // Build messages in Google format
+  const contents = body.messages?.map((msg: any) => {
+    const content = Array.isArray(msg.content) ? msg.content : [{ type: "text", text: msg.content }];
+    return {
+      role: msg.role === "user" ? "user" : "model",
+      parts: content.map((item: any) => {
+        if (item.type === "text") return { text: item.text };
+        if (item.type === "image_url" && item.image_url?.url) {
+          const url = item.image_url.url;
+          if (url.startsWith("data:")) {
+            const [header, base64] = url.split(",");
+            const mimeType = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+            return { inlineData: { mimeType, data: base64 } };
+          }
+        }
+        return item;
+      }),
+    };
+  }) || [];
+
+  const latencyMs = Date.now() - startTime;
+
+  try {
+    if (isStreaming) {
+      // Streaming response using ReadableStream
+      const stream = await genModel.generateContentStream({ contents });
+      const encoder = new TextEncoder();
+      let lastUsageData: any = null;
+
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of stream.stream) {
+              if (chunk.usageMetadata) lastUsageData = chunk;
+
+              const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text || "";
+              if (text) {
+                // Convert to OpenAI format
+                const openaiChunk = {
+                  choices: [{ delta: { content: text }, index: 0 }],
+                };
+                const line = `data: ${JSON.stringify(openaiChunk)}\n\n`;
+                controller.enqueue(encoder.encode(line));
+              }
+            }
+
+            // Send [DONE] signal
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+
+            // Log after stream completes
+            const tokens = lastUsageData ? extractTokens("Google", lastUsageData) : { inputTokens: null, outputTokens: null };
+            const costs = await computeFinalCosts("Google", model, tokens.inputTokens, tokens.outputTokens, pricing);
+            await logRequest({
+              buyerKeyId: proxyContext.buyerKeyId,
+              sellerKeyId,
+              provider: "Google",
+              model,
+              statusCode: 200,
+              inputTokens: tokens.inputTokens,
+              outputTokens: tokens.outputTokens,
+              inputRate: costs.inputRate,
+              outputRate: costs.outputRate,
+              costUpstream: costs.costUpstream,
+              costCharged: costs.costCharged,
+              sellerEarning: costs.sellerEarning,
+              yourMargin: costs.yourMargin,
+              latencyMs,
+            });
+          } catch (err) {
+            controller.error(err);
+          }
+        },
+      });
+
+      return new Response(readable, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    } else {
+      // Non-streaming response
+      const result = await genModel.generateContent({ contents });
+      const tokens = extractTokens("Google", result.response);
+      const costs = await computeFinalCosts("Google", model, tokens.inputTokens, tokens.outputTokens, pricing);
+
+      await logRequest({
+        buyerKeyId: proxyContext.buyerKeyId,
+        sellerKeyId,
+        provider: "Google",
+        model,
+        statusCode: 200,
+        inputTokens: tokens.inputTokens,
+        outputTokens: tokens.outputTokens,
+        inputRate: costs.inputRate,
+        outputRate: costs.outputRate,
+        costUpstream: costs.costUpstream,
+        costCharged: costs.costCharged,
+        sellerEarning: costs.sellerEarning,
+        yourMargin: costs.yourMargin,
+        latencyMs,
+      });
+
+      // Convert to OpenAI-compatible response format
+      const responseData = {
+        id: "google-" + Date.now(),
+        object: "chat.completion",
+        created: Math.floor(Date.now() / 1000),
+        model,
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: result.response.text(),
+            },
+            finish_reason: "stop",
+          },
+        ],
+        usage: {
+          prompt_tokens: tokens.inputTokens,
+          completion_tokens: tokens.outputTokens,
+          total_tokens: (tokens.inputTokens || 0) + (tokens.outputTokens || 0),
+        },
+      };
+
+      return c.json(responseData, 200);
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+
+    // Detect 429 rate limit errors - check both status property and message
+    const status = (err as any)?.status === 429 || errorMessage.includes("429") ? 429 : 500;
+
+    await logRequest({
+      buyerKeyId: proxyContext.buyerKeyId,
+      sellerKeyId,
+      provider: "Google",
+      model,
+      statusCode: status,
+      latencyMs,
+      errorMessage,
+    });
+    throw { status, message: errorMessage };
+  }
+}
+
+// --- HTTP handler for all providers ---
+
+function convertRequestForProvider(provider: string, body: any): any {
+  // OpenAI/DeepSeek format stays as-is
+  if (provider === "OpenAI" || provider === "DeepSeek") {
+    return body;
+  }
+
+  // Convert to Anthropic format
+  if (provider === "Anthropic") {
+    return {
+      model: body.model,
+      max_tokens: body.max_tokens || 1024,
+      system: body.system,
+      messages: body.messages?.map((msg: any) => ({
+        role: msg.role,
+        content: Array.isArray(msg.content) ? msg.content : [{ type: "text", text: msg.content }],
+      })) || [],
+    };
+  }
+
+  // Convert to Google format
+  if (provider === "Google") {
+    return {
+      contents: body.messages?.map((msg: any) => {
+        const content = Array.isArray(msg.content) ? msg.content : [{ type: "text", text: msg.content }];
+        return {
+          role: msg.role === "user" ? "user" : "model",
+          parts: content.map((item: any) => {
+            if (item.type === "text") return { text: item.text };
+            if (item.type === "image_url" && item.image_url?.url) {
+              const url = item.image_url.url;
+              if (url.startsWith("data:")) {
+                const [header, base64] = url.split(",");
+                const mimeType = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+                return { inlineData: { mimeType, data: base64 } };
+              }
+            }
+            return item;
+          }),
+        };
+      }) || [],
+      generationConfig: { maxOutputTokens: body.max_tokens || 1024 },
+    };
+  }
+
+  return body;
+}
+
+async function handleHttpRequest(c: any, body: any, provider: string, apiKey: string, model: string, pricing: any, proxyContext: ProxyContext, startTime: number, sellerKeyId: string) {
+  const path = c.req.path.replace(/^\/api\/proxy/, "");
+  const isStreaming = body.stream === true;
+  const endpointPath = getProviderEndpointPath(provider, model, path, isStreaming);
+  let upstreamUrl = `${getProviderBaseUrl(provider)}${endpointPath}`;
+
+  // Google requires API key as query parameter
+  if (provider === "Google") {
+    upstreamUrl += `?key=${apiKey}`;
+  }
+
+  const convertedBody = convertRequestForProvider(provider, body);
+  const requestBody = JSON.stringify(convertedBody);
+  const latencyMs = Date.now() - startTime;
+
+  const upstreamResponse = await fetch(upstreamUrl, {
+    method: c.req.method,
+    headers: {
+      "Content-Type": "application/json",
+      // Skip auth header for Google (using query param instead)
+      ...(provider !== "Google" ? buildAuthHeader(provider, apiKey) : {})
+    },
+    body: requestBody,
+  });
+
+  if (upstreamResponse.ok) {
+    const contentType = upstreamResponse.headers.get("content-type") || "";
+    const isStreaming = contentType.includes("text/event-stream");
+
+    if (isStreaming) {
+      let lastUsageData: any = null;
+
+      const { readable, writable } = new TransformStream({
+        transform(chunk: Uint8Array, controller) {
+          const text = new TextDecoder().decode(chunk);
+          if (provider === "Google") console.log("📦 Google stream chunk:", text.slice(0, 300));
+
+          for (const line of text.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            const payload = line.slice(6).trim();
+            if (payload === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed.usage || parsed.usageMetadata) lastUsageData = parsed;
+
+              // Convert Google's format to OpenAI format if needed
+              const toSend = provider === "Google" ? convertGoogleStreamToOpenAI(parsed) : parsed;
+              if (toSend) {
+                const openaiFormat = `data: ${JSON.stringify(toSend)}\n\n`;
+                controller.enqueue(new TextEncoder().encode(openaiFormat));
+              }
+            } catch {}
+          }
+        },
+        flush(controller) {
+          // Send [DONE] signal for streaming completion
+          controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+
+          const tokens = lastUsageData ? extractTokens(provider, lastUsageData) : { inputTokens: null, outputTokens: null };
+          computeFinalCosts(provider, model, tokens.inputTokens, tokens.outputTokens, pricing).then((costs) => {
+            logRequest({
+              buyerKeyId: proxyContext.buyerKeyId,
+              sellerKeyId,
+              provider,
+              model,
+              statusCode: 200,
+              inputTokens: tokens.inputTokens,
+              outputTokens: tokens.outputTokens,
+              inputRate: costs.inputRate,
+              outputRate: costs.outputRate,
+              costUpstream: costs.costUpstream,
+              costCharged: costs.costCharged,
+              sellerEarning: costs.sellerEarning,
+              yourMargin: costs.yourMargin,
+              latencyMs,
+            });
+          });
+        },
+      });
+
+      upstreamResponse.body!.pipeTo(writable).catch((err) => console.error("Error piping stream:", err));
+
+      return new Response(readable, {
+        status: upstreamResponse.status,
+        headers: {
+          "Content-Type": contentType,
+          "Cache-Control": "no-cache",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    } else {
+      const responseText = await upstreamResponse.text();
+      let responseData: any = {};
+      let tokens = { inputTokens: null as number | null, outputTokens: null as number | null };
+
+      try {
+        responseData = JSON.parse(responseText);
+        tokens = extractTokens(provider, responseData);
+      } catch {
+        console.error("Error parsing response JSON");
+      }
+
+      const costs = await computeFinalCosts(provider, model, tokens.inputTokens, tokens.outputTokens, pricing);
+      await logRequest({
+        buyerKeyId: proxyContext.buyerKeyId,
+        sellerKeyId,
+        provider,
+        model,
+        statusCode: 200,
+        inputTokens: tokens.inputTokens,
+        outputTokens: tokens.outputTokens,
+        inputRate: costs.inputRate,
+        outputRate: costs.outputRate,
+        costUpstream: costs.costUpstream,
+        costCharged: costs.costCharged,
+        sellerEarning: costs.sellerEarning,
+        yourMargin: costs.yourMargin,
+        latencyMs,
+      });
+
+      return c.json(responseData, 200);
+    }
+  } else {
+    const statusCode = upstreamResponse.status;
+    const errorBody = await upstreamResponse.text();
+    await logRequest({
+      buyerKeyId: proxyContext.buyerKeyId,
+      sellerKeyId,
+      provider,
+      model,
+      statusCode,
+      inputRate: pricing.inputRate,
+      outputRate: pricing.outputRate,
+      latencyMs,
+      errorMessage: errorBody,
+    });
+    throw { status: statusCode, message: errorBody };
+  }
+}
 
 export default proxyRouter;
