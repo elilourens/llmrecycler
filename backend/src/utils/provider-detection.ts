@@ -7,6 +7,7 @@ const PREFIX_PATTERNS: Array<{ prefix: string; provider: string }> = [
   { prefix: "claude-", provider: "Anthropic" },
   { prefix: "gpt-", provider: "OpenAI" },
   { prefix: "gemini-", provider: "Google" },
+  { prefix: "grok-", provider: "Grok" },
   { prefix: "deepseek-", provider: "DeepSeek" },
 ];
 
@@ -29,6 +30,6 @@ export function detectProvider(model: string): string | null {
 }
 
 export function isValidProvider(provider: string): boolean {
-  const validProviders = ["Anthropic", "OpenAI", "Google", "DeepSeek"];
+  const validProviders = ["Anthropic", "OpenAI", "Google", "Grok", "DeepSeek"];
   return validProviders.includes(provider);
 }

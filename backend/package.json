@@ -9,6 +9,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@google/generative-ai": "^0.11.0",
     "@supabase/supabase-js": "^2.43.0",
     "hono": "^4.4.0",
     "stripe": "^20.4.1"
