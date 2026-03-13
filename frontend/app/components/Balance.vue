@@ -88,7 +88,7 @@
   <UModal v-model:open="showWithdrawModal" title="Withdraw to PayPal">
     <template #body>
       <div class="space-y-4">
-        <p class="text-sm text-muted">Minimum withdrawal: $1</p>
+        <p class="text-sm text-muted">Minimum withdrawal: $2</p>
         <p class="text-xs text-muted">Withdrawals are pending approval</p>
 
         <div class="space-y-3">
@@ -99,7 +99,7 @@
               type="number"
               placeholder="10.00"
               step="0.01"
-              min="1"
+              min="2"
             />
           </div>
 
@@ -201,8 +201,8 @@ const handleAddFunds = async (amount: number | null) => {
 }
 
 const handleWithdraw = async () => {
-  if (!withdrawAmount.value || withdrawAmount.value < 1) {
-    toast.add({ title: 'Invalid amount', description: 'Minimum withdrawal is $1', color: 'error' })
+  if (!withdrawAmount.value || withdrawAmount.value < 2) {
+    toast.add({ title: 'Invalid amount', description: 'Minimum withdrawal is $2', color: 'error' })
     return
   }
 

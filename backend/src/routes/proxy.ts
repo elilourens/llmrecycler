@@ -12,6 +12,8 @@ const proxyRouter = new Hono();
 proxyRouter.use(proxyAuthMiddleware);
 
 const MAX_KEY_RETRIES = 3;
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 // --- Helpers ---
 
@@ -50,13 +52,11 @@ function getProviderBaseUrl(provider: string): string {
 }
 
 function getProviderEndpointPath(provider: string, model: string, requestPath: string, isStreaming: boolean = false): string {
-  // If the request already has a full path, use provider-specific mapping
+  if (provider === "Anthropic") return "/v1/messages";
   if (provider === "Google") {
-    // Google uses different endpoints for streaming vs non-streaming
     const endpoint = isStreaming ? "streamGenerateContent" : "generateContent";
     return `/v1beta/models/${model}:${endpoint}`;
   }
-  // All others use the path as-is
   return requestPath;
 }
 
@@ -76,6 +76,13 @@ function extractTokens(
     default:
       return { inputTokens: null, outputTokens: null };
   }
+}
+
+function convertAnthropicStreamToOpenAI(chunk: any): any {
+  if (chunk.type === "content_block_delta" && chunk.delta?.type === "text_delta") {
+    return { choices: [{ delta: { content: chunk.delta.text }, index: 0 }] };
+  }
+  return null;
 }
 
 function convertGoogleStreamToOpenAI(googleChunk: any): any {
@@ -242,9 +249,6 @@ proxyRouter.post("*", async (c: any) => {
         return c.json({ error: { type: "internal_error", message: "Pricing not configured for this model" } }, 500);
       }
 
-      // Update last_checked_at (fire-and-forget)
-      supabase.from("seller_keys").update({ last_checked_at: new Date().toISOString() }).eq("id", sellerKey.id);
-
       // Route to appropriate handler
       try {
         if (provider === "Google") {
@@ -331,7 +335,6 @@ async function handleGoogleRequest(c: any, body: any, apiKey: string, model: str
     if (isStreaming) {
       // Streaming response using ReadableStream
       const stream = await genModel.generateContentStream({ contents });
-      const encoder = new TextEncoder();
       let lastUsageData: any = null;
 
       const readable = new ReadableStream({
@@ -458,8 +461,11 @@ async function handleGoogleRequest(c: any, body: any, apiKey: string, model: str
 // --- HTTP handler for all providers ---
 
 function convertRequestForProvider(provider: string, body: any): any {
-  // OpenAI/DeepSeek format stays as-is
+  // OpenAI/DeepSeek format stays as-is, but inject stream_options for usage tracking
   if (provider === "OpenAI" || provider === "DeepSeek") {
+    if (body.stream === true) {
+      return { ...body, stream_options: { include_usage: true } };
+    }
     return body;
   }
 
@@ -468,6 +474,7 @@ function convertRequestForProvider(provider: string, body: any): any {
     return {
       model: body.model,
       max_tokens: body.max_tokens || 1024,
+      stream: body.stream,
       system: body.system,
       messages: body.messages?.map((msg: any) => ({
         role: msg.role,
@@ -535,34 +542,43 @@ async function handleHttpRequest(c: any, body: any, provider: string, apiKey: st
 
     if (isStreaming) {
       let lastUsageData: any = null;
+      let anthropicInputTokens: number | null = null;
+      let lineBuffer = "";
 
       const { readable, writable } = new TransformStream({
         transform(chunk: Uint8Array, controller) {
-          const text = new TextDecoder().decode(chunk);
-          if (provider === "Google") console.log("📦 Google stream chunk:", text.slice(0, 300));
+          lineBuffer += decoder.decode(chunk, { stream: true });
+          const lines = lineBuffer.split("\n");
+          lineBuffer = lines.pop() ?? "";
 
-          for (const line of text.split("\n")) {
+          for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
             const payload = line.slice(6).trim();
             if (payload === "[DONE]") continue;
             try {
               const parsed = JSON.parse(payload);
               if (parsed.usage || parsed.usageMetadata) lastUsageData = parsed;
+              if (provider === "Anthropic" && parsed.type === "message_start") {
+                anthropicInputTokens = parsed.message?.usage?.input_tokens ?? null;
+              }
 
-              // Convert Google's format to OpenAI format if needed
-              const toSend = provider === "Google" ? convertGoogleStreamToOpenAI(parsed) : parsed;
+              const toSend =
+                provider === "Anthropic" ? convertAnthropicStreamToOpenAI(parsed) :
+                provider === "Google"    ? convertGoogleStreamToOpenAI(parsed)    :
+                parsed;
               if (toSend) {
-                const openaiFormat = `data: ${JSON.stringify(toSend)}\n\n`;
-                controller.enqueue(new TextEncoder().encode(openaiFormat));
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(toSend)}\n\n`));
               }
             } catch {}
           }
         },
         flush(controller) {
-          // Send [DONE] signal for streaming completion
-          controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
 
-          const tokens = lastUsageData ? extractTokens(provider, lastUsageData) : { inputTokens: null, outputTokens: null };
+          let tokens = lastUsageData ? extractTokens(provider, lastUsageData) : { inputTokens: null, outputTokens: null };
+          if (provider === "Anthropic" && anthropicInputTokens !== null) {
+            tokens = { inputTokens: anthropicInputTokens, outputTokens: tokens.outputTokens };
+          }
           computeFinalCosts(provider, model, tokens.inputTokens, tokens.outputTokens, pricing).then((costs) => {
             logRequest({
               buyerKeyId: proxyContext.buyerKeyId,

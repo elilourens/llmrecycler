@@ -96,8 +96,10 @@
       <UModal v-model:open="isHowToUseOpen" title="How to use" :ui="{ content: 'max-w-4xl' }">
         <UButton color="primary" block @click="isHowToUseOpen = true">How to use</UButton>
         <template #body>
+          <p class="text-sm text-muted mb-4">All providers use the OpenAI SDK — just change the model name.</p>
           <UTabs :items="howToUseTabs" class="w-full">
             <template v-for="tab in howToUseTabs" #[tab.slot] :key="tab.slot">
+              <div v-if="(tab as any).comingSoon" class="mt-4 rounded-lg bg-warning/10 border border-warning/30 px-4 py-3 text-sm text-warning font-medium">Support coming soon</div>
               <div v-if="codeExamples[tab.slot]" class="mt-4 space-y-4 overflow-auto max-h-[65vh] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div v-for="(block, idx) in [
                   { label: 'Before', code: codeExamples[tab.slot]!.before, highlight: false },
@@ -246,8 +248,8 @@ const howToUseTabs = [
   { label: 'OpenAI', slot: 'openai', value: 'openai' },
   { label: 'Claude', slot: 'claude', value: 'claude' },
   { label: 'Gemini', slot: 'gemini', value: 'gemini' },
-  { label: 'DeepSeek', slot: 'deepseek', value: 'deepseek' },
-  { label: 'Grok', slot: 'grok', value: 'grok' },
+  { label: 'DeepSeek', slot: 'deepseek', value: 'deepseek', comingSoon: true },
+  { label: 'Grok', slot: 'grok', value: 'grok', comingSoon: true },
 ]
 
 const codeExamples: Record<string, { before: string; after: string }> = {
@@ -285,19 +287,18 @@ message = client.messages.create(
     messages=[{"role": "user", "content": "Hello!"}]
 )
 print(message.content[0].text)`,
-    after: `import anthropic
+    after: `from openai import OpenAI
 
-client = anthropic.Anthropic(
+client = OpenAI(
     api_key="<your-buyer-key>",
-    base_url="${proxyUrl}"
+    base_url="${proxyUrl}/v1"
 )
 
-message = client.messages.create(
+response = client.chat.completions.create(
     model="claude-opus-4-6",
-    max_tokens=1024,
     messages=[{"role": "user", "content": "Hello!"}]
 )
-print(message.content[0].text)`,
+print(response.choices[0].message.content)`,
   },
   gemini: {
     before: `from openai import OpenAI

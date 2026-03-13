@@ -54,6 +54,12 @@ export default defineNuxtConfig({
     }
   },
 
+  app: {
+    head: {
+      link: [{ rel: 'icon', type: 'image/jpeg', href: '/icon.jpg' }]
+    }
+  },
+
   compatibilityDate: '2025-01-15',
 
   eslint: {

@@ -149,9 +149,9 @@ stripeRouter.post("/withdraw", authMiddleware, async (c) => {
       paypalEmail: string;
     };
 
-    // Validate minimum $1
-    if (!amount || amount < 1) {
-      return c.json({ error: "Minimum withdrawal is $1" }, 400);
+    // Validate minimum $2
+    if (!amount || amount < 2) {
+      return c.json({ error: "Minimum withdrawal is $2" }, 400);
     }
 
     if (!paypalEmail) {
