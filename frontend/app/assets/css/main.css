@@ -1,8 +1,16 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+html, body {
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
 @theme static {
-  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-sans: 'Inter', sans-serif;
   --radius-none: 0;
   --radius-sm: 0;
   --radius: 0;
@@ -16,6 +24,7 @@
 :root {
   --ui-radius: 0;
   --ui-primary: black;
+  --color-accent: #85BB65;
   --ui-secondary: #f1f1f1;
   --ui-text: #000000;
   --ui-text-highlighted: #000000;
@@ -28,6 +37,18 @@
 .dark {
   --ui-primary: black;
   --ui-secondary: white;
+}
+
+.auth-bg {
+  background: url('/eye_plants.jpg') center/cover no-repeat;
+}
+
+.bg-accent {
+  background-color: var(--color-accent);
+}
+
+.text-accent {
+  color: var(--color-accent);
 }
 
 /* Neutral outline button: invert on hover */

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-white px-4">
+  <div class="auth-bg min-h-screen flex items-center justify-center px-4">
     <UCard class="w-full max-w-md">
       <template #header>
         <h1 class="text-2xl font-bold text-center text-highlighted">Set New Password</h1>

@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-white px-4">
+  <div class="auth-bg min-h-screen flex items-center justify-center px-4">
     <UCard class="w-full max-w-md">
       <template #header>
-        <div class="-mx-6 -my-4 px-6 py-4" style="background-color: #85BB65;">
+        <div class="-mx-6 -my-4 px-6 py-4 bg-accent">
           <h1 class="text-2xl font-bold text-center text-highlighted">Create Account</h1>
         </div>
       </template>

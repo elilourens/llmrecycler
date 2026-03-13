@@ -32,25 +32,28 @@
 
     <!-- Bottom: lime section -->
     <div class="bottom-section">
-      <div class="bottom-ascii">
-        <ImageAscii
-          src="/plant.jpg"
-          :invert="true"
-          :gamma="0.45"
-          :threshold="0.18"
-          :bands="[{ cols: 120, rows: 55, fontSize: '0.4rem' }]"
-        />
-      </div>
-      <div class="bottom-left">
-        <div class="marquee-text">
-          <span class="line-fill">BUY API</span>
-          <span class="line-fill">CREDITS AT</span>
-          <span class="line-fill">HALF PRICE.</span>
+      <div class="bottom-inner">
+        <div class="bottom-ascii">
+          <ImageAscii
+            src="/plant.jpg"
+            :invert="true"
+            :gamma="0.45"
+            :threshold="0.18"
+            :cols="150"
+            :rows="55"
+          />
         </div>
-        <div class="bottom-ctas">
-          <a href="/auth/signup">
-            <UButton color="primary" size="lg">Start Buying Now</UButton>
-          </a>
+        <div class="bottom-left">
+          <div class="marquee-text">
+            <span class="line-fill">BUY API</span>
+            <span class="line-fill">CREDITS AT</span>
+            <span class="line-fill">HALF PRICE.</span>
+          </div>
+          <div class="bottom-ctas">
+            <a href="/auth/signup">
+              <UButton color="primary" size="lg">Start Buying Now</UButton>
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -101,6 +104,10 @@ useHead({ title: 'LLM Recycler' })
 <style scoped>
 * { box-sizing: border-box; }
 
+:global(body) {
+  background: #111;
+}
+
 .page {
   min-height: 100vh;
   display: flex;
@@ -123,6 +130,9 @@ useHead({ title: 'LLM Recycler' })
   align-items: stretch;
   min-height: 0;
   position: relative;
+  max-width: 1800px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .ascii-wrap {
@@ -184,7 +194,7 @@ useHead({ title: 'LLM Recycler' })
   background: #0d1a0d;
   opacity: 0.85;
 }
-.or-box.green span { color: #85BB65; }
+.or-box.green span { color: var(--color-accent); }
 
 .or-box.solid {
   background: #111;
@@ -200,14 +210,6 @@ useHead({ title: 'LLM Recycler' })
   font-size: clamp(0.28rem, 0.75vw, 0.48rem) !important;
 }
 
-.bottom-ascii :deep(.ascii-seg) {
-  color: #111;
-  font-size: clamp(0.18rem, 0.42vw, 0.4rem) !important;
-}
-
-.bottom-ascii :deep(.ascii-segments) {
-  align-items: flex-start;
-}
 
 .hero-text {
   flex: 0 0 45%;
@@ -256,12 +258,18 @@ useHead({ title: 'LLM Recycler' })
 /* Bottom lime section */
 .bottom-section {
   flex: 0 0 auto;
-  background: #85BB65;
+  background: var(--color-accent);
+  overflow: hidden;
+}
+
+.bottom-inner {
+  max-width: 1800px;
+  margin: 0 auto;
+  width: 100%;
   padding: 1rem 0 0 0;
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  overflow: hidden;
 }
 
 .bottom-left {
@@ -278,6 +286,7 @@ useHead({ title: 'LLM Recycler' })
   justify-content: flex-start;
   align-self: stretch;
   line-height: 0;
+  width: clamp(160px, 18vw, 280px);
 }
 
 .marquee-text {
@@ -308,7 +317,7 @@ useHead({ title: 'LLM Recycler' })
 
 /* Ticker divider */
 .ticker-row {
-  background: #85BB65;
+  background: var(--color-accent);
   border-top: 2px solid #6a9a50;
   border-bottom: 2px solid #6a9a50;
   overflow: hidden;
@@ -355,6 +364,9 @@ useHead({ title: 'LLM Recycler' })
   flex-direction: row;
   align-items: flex-start;
   gap: 2rem;
+  max-width: 1800px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .pricing-card {
@@ -368,7 +380,7 @@ useHead({ title: 'LLM Recycler' })
   font-family: 'Courier New', monospace;
   font-size: 0.65rem;
   letter-spacing: 0.25em;
-  color: #85BB65;
+  color: var(--color-accent);
   font-weight: bold;
   text-transform: uppercase;
 }
@@ -384,7 +396,7 @@ useHead({ title: 'LLM Recycler' })
 
 .pricing-unit {
   font-size: 0.5em;
-  color: #85BB65;
+  color: var(--color-accent);
 }
 
 .pricing-desc {
@@ -416,7 +428,7 @@ useHead({ title: 'LLM Recycler' })
 
 .pricing-list li::before {
   content: '→ ';
-  color: #85BB65;
+  color: var(--color-accent);
 }
 
 .pricing-divider {
@@ -427,8 +439,6 @@ useHead({ title: 'LLM Recycler' })
   align-self: center;
   padding: 0 1rem;
 }
-
-::-webkit-scrollbar { display: none; }
 
 @media (max-width: 768px) {
   .pricing-section {
@@ -473,7 +483,7 @@ useHead({ title: 'LLM Recycler' })
     font-size: 5vw;
   }
 
-  .bottom-section {
+  .bottom-inner {
     flex-direction: column-reverse;
   }
 
@@ -482,9 +492,6 @@ useHead({ title: 'LLM Recycler' })
     justify-content: center;
   }
 
-  .bottom-ascii :deep(.ascii-seg) {
-    font-size: clamp(0.14rem, 0.9vw, 0.22rem) !important;
-  }
 
   .bottom-left {
     flex: 0 0 auto;

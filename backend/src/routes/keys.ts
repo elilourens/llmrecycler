@@ -31,6 +31,31 @@ keysRouter.get("/", async (c) => {
   }
 });
 
+// GET /api/keys/stats - active seller key counts by provider (system-wide)
+keysRouter.get("/stats", async (c) => {
+  try {
+    const { data, error } = await supabase
+      .from("seller_keys")
+      .select("provider")
+      .eq("status", "active");
+
+    if (error) {
+      console.error("Error fetching key stats:", error);
+      return c.json({ error: "Failed to fetch key stats" }, 500);
+    }
+
+    const counts: Record<string, number> = {};
+    for (const row of data || []) {
+      counts[row.provider] = (counts[row.provider] || 0) + 1;
+    }
+
+    return c.json({ activeKeys: counts });
+  } catch (err) {
+    console.error("Unexpected error fetching key stats:", err);
+    return c.json({ error: "Failed to fetch key stats" }, 500);
+  }
+});
+
 // POST /api/keys - add a new key
 keysRouter.post("/", async (c) => {
   const userId = c.get("userId");

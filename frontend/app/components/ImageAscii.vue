@@ -1,80 +1,26 @@
 <template>
   <div class="image-ascii-container">
     <img ref="imgEl" :src="src" style="display:none" crossorigin="anonymous" @load="render" />
-    <canvas ref="canvasEl" style="display:none" />
-    <div class="ascii-segments">
-      <pre
-        v-for="(text, i) in segTexts"
-        :key="i"
-        class="ascii-seg"
-        :style="{ fontSize: bands[i]!.fontSize }"
-      >{{ text }}</pre>
-    </div>
+    <canvas ref="canvasEl" class="ascii-canvas" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-interface Band {
-  /** number of characters across this band's width */
-  cols: number
-  fontSize: string
-  /** rows for this band — should be inversely proportional to fontSize to keep same visual height */
-  rows?: number
-}
-
 const props = defineProps({
   src: { type: String, required: true },
   invert: { type: Boolean, default: true },
   gamma: { type: Number, default: 0.45 },
-  threshold: { type: Number, default: 0.2 },
-  /** char width / line-height ratio — monospace chars are ~0.5 wide relative to their line height */
-  charAspect: { type: Number, default: 0.5 },
-  bands: {
-    type: Array as () => Band[],
-    default: (): Band[] => [
-      { cols: 100, fontSize: '0.26rem' },
-    ],
-  },
+  threshold: { type: Number, default: 0.18 },
+  cols: { type: Number, default: 120 },
+  rows: { type: Number, default: 55 },
+  bgColor: { type: String, default: '#85BB65' },
+  fgColor: { type: String, default: '#111111' },
 })
 
 const imgEl = ref<HTMLImageElement | null>(null)
 const canvasEl = ref<HTMLCanvasElement | null>(null)
-const segTexts = ref<string[]>([])
-
-// light → dark: ASCII chars for mid-tones, blocks for dark areas
-const CHARS = ' .;+#▒▒▓▓███'
-
-const renderBand = (
-  ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  img: HTMLImageElement,
-  bandIdx: number,
-): string => {
-  const band = props.bands[bandIdx]!
-  const cols = band.cols
-  const rows = band.rows ?? Math.round(cols * (img.naturalHeight / img.naturalWidth) * props.charAspect)
-  const n = props.bands.length
-  const srcX = Math.floor((bandIdx / n) * img.naturalWidth)
-  const srcW = Math.ceil((1 / n) * img.naturalWidth)
-
-  canvas.width = cols
-  canvas.height = rows
-  ctx.drawImage(img, srcX, 0, srcW, img.naturalHeight, 0, 0, cols, rows)
-
-  const { data } = ctx.getImageData(0, 0, cols, rows)
-  let out = ''
-  for (let i = 0; i < data.length; i += 4) {
-    const b = (data[i] ?? 0) * 0.299 + (data[i + 1] ?? 0) * 0.587 + (data[i + 2] ?? 0) * 0.114
-    let t = props.invert ? 1 - b / 255 : b / 255
-    if (t < props.threshold) t = 0
-    else t = Math.pow((t - props.threshold) / (1 - props.threshold), props.gamma)
-    out += CHARS[Math.round(t * (CHARS.length - 1))]
-    if ((i / 4 + 1) % cols === 0) out += '\n'
-  }
-  return out
-}
 
 const render = () => {
   const img = imgEl.value
@@ -82,7 +28,39 @@ const render = () => {
   if (!img || !canvas) return
   const ctx = canvas.getContext('2d')
   if (!ctx) return
-  segTexts.value = props.bands.map((_, i) => renderBand(ctx, canvas, img, i))
+
+  const cols = props.cols
+  const rows = props.rows
+  const cellW = canvas.offsetWidth / cols
+  const cellH = canvas.offsetHeight / rows
+
+  canvas.width = canvas.offsetWidth
+  canvas.height = canvas.offsetHeight
+
+  // Sample image into cols×rows grid
+  const offscreen = document.createElement('canvas')
+  offscreen.width = cols
+  offscreen.height = rows
+  const octx = offscreen.getContext('2d')!
+  octx.drawImage(img, 0, 0, cols, rows)
+  const { data } = octx.getImageData(0, 0, cols, rows)
+
+  ctx.fillStyle = props.bgColor
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const idx = (row * cols + col) * 4
+      const b = (data[idx]! * 0.299 + data[idx + 1]! * 0.587 + data[idx + 2]! * 0.114)
+      let t = props.invert ? 1 - b / 255 : b / 255
+      if (t < props.threshold) continue
+      t = Math.pow((t - props.threshold) / (1 - props.threshold), props.gamma)
+      ctx.globalAlpha = t
+      ctx.fillStyle = props.fgColor
+      ctx.fillRect(Math.floor(col * cellW), Math.floor(row * cellH), Math.ceil(cellW), Math.ceil(cellH))
+    }
+  }
+  ctx.globalAlpha = 1
 }
 
 onMounted(() => {
@@ -97,19 +75,10 @@ onMounted(() => {
   height: 100%;
 }
 
-.ascii-segments {
-  display: flex;
-  align-items: flex-end;
+.ascii-canvas {
   width: 100%;
-}
-
-.ascii-seg {
-  flex: 0 0 auto;
-  margin: 0;
-  white-space: pre;
-  font-family: monospace;
-  line-height: 1.15;
-  font-weight: bold;
-  overflow: hidden;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
 }
 </style>

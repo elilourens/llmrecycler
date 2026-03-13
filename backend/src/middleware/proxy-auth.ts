@@ -8,10 +8,11 @@ export interface ProxyContext {
 }
 
 export const proxyAuthMiddleware = async (c: Context, next: Next) => {
-  const apiKey = c.req.header("x-api-key");
+  const apiKey = c.req.header("x-api-key")
+    || c.req.header("authorization")?.replace(/^Bearer\s+/i, "");
 
   if (!apiKey) {
-    return c.json({ error: { type: "authentication_error", message: "Missing x-api-key header" } }, 401);
+    return c.json({ error: { type: "authentication_error", message: "Missing x-api-key or Authorization header" } }, 401);
   }
 
   try {

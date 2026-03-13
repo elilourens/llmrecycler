@@ -1,7 +1,7 @@
 <template>
   <UCard :ui="{ root: 'rounded-lg overflow-hidden flex flex-col h-full', body: 'p-4 sm:p-6 flex flex-col flex-1' }">
     <template #header>
-      <div class="-mx-6 -my-4 px-6 py-4 flex justify-between items-center" style="background-color: #85BB65;">
+      <div class="-mx-6 -my-4 px-6 py-4 flex justify-between items-center bg-accent">
         <h2 class="text-lg font-bold text-highlighted">Info</h2>
       </div>
     </template>
@@ -39,11 +39,11 @@
                         <td class="py-2 px-3 font-mono text-xs">{{ row.model }}</td>
                         <td class="py-2 px-3 text-right">
                           <span class="line-through text-muted mr-1">${{ row.inputUpstream.toFixed(4) }}</span>
-                          <span class="font-semibold" style="color: #85BB65;">${{ row.inputBuyer.toFixed(4) }}</span>
+                          <span class="font-semibold text-accent">${{ row.inputBuyer.toFixed(4) }}</span>
                         </td>
                         <td class="py-2 px-3 text-right">
                           <span class="line-through text-muted mr-1">${{ row.outputUpstream.toFixed(4) }}</span>
-                          <span class="font-semibold" style="color: #85BB65;">${{ row.outputBuyer.toFixed(4) }}</span>
+                          <span class="font-semibold text-accent">${{ row.outputBuyer.toFixed(4) }}</span>
                         </td>
                       </tr>
                     </tbody>
@@ -78,10 +78,10 @@
                         <td class="py-2 px-3 capitalize">{{ row.provider }}</td>
                         <td class="py-2 px-3 font-mono text-xs">{{ row.model }}</td>
                         <td class="py-2 px-3 text-right">
-                          <span class="font-semibold" style="color: #85BB65;">${{ row.inputSeller.toFixed(4) }}</span>
+                          <span class="font-semibold text-accent">${{ row.inputSeller.toFixed(4) }}</span>
                         </td>
                         <td class="py-2 px-3 text-right">
-                          <span class="font-semibold" style="color: #85BB65;">${{ row.outputSeller.toFixed(4) }}</span>
+                          <span class="font-semibold text-accent">${{ row.outputSeller.toFixed(4) }}</span>
                         </td>
                       </tr>
                     </tbody>
@@ -103,8 +103,8 @@
                   { label: 'Before', code: codeExamples[tab.slot]!.before, highlight: false },
                   { label: 'After', code: codeExamples[tab.slot]!.after, highlight: true },
                 ]" :key="idx">
-                  <div class="flex items-center justify-between px-3 py-1.5 rounded-t-lg" :class="block.highlight ? 'bg-neutral-200' : 'bg-neutral-200'">
-                    <span class="text-xs font-semibold" :style="block.highlight ? 'color: #85BB65' : 'color: #9ca3af'">{{ block.label }}</span>
+                  <div class="flex items-center justify-between px-3 py-1.5 rounded-t-lg" :class="block.highlight ? 'bg-neutral-200' : 'bg-neutral-100'">
+                    <span class="text-xs font-semibold" :class="block.highlight ? 'text-accent' : 'text-neutral-400'">{{ block.label }}</span>
                     <button
                       class="text-xs text-neutral-500 hover:text-neutral-900 transition-colors px-2 py-0.5 rounded"
                       @click="copyCode(block.code)"
@@ -118,13 +118,78 @@
         </template>
       </UModal>
 
-      <UButton color="primary" block>Support</UButton>
-      <UButton color="primary" block>Active Keys</UButton>
+      <UModal v-model:open="isSupportOpen" title="Support">
+        <UButton color="primary" block @click="isSupportOpen = true">Support</UButton>
+        <template #body>
+          <div class="py-4 text-center space-y-2">
+            <p class="text-sm text-muted">For help, email us at:</p>
+            <p class="font-mono font-semibold">support@apirecycler.com</p>
+          </div>
+        </template>
+      </UModal>
+      <UModal v-model:open="isActiveKeysOpen" title="Active Seller Keys">
+        <UButton color="primary" block @click="isActiveKeysOpen = true">Active Keys</UButton>
+        <template #body>
+          <div class="py-4">
+            <div v-if="loadingActiveKeys" class="flex justify-center py-8">
+              <UIcon name="i-lucide-loader-2" class="animate-spin text-2xl text-muted" />
+            </div>
+            <div v-else-if="activeKeysError" class="text-error text-sm py-4 text-center">
+              Failed to load active keys.
+            </div>
+            <div v-else-if="activeKeyEntries.length === 0" class="text-sm text-muted text-center py-4">
+              No active seller keys.
+            </div>
+            <div v-else class="space-y-3 py-2">
+              <div
+                v-for="[provider, count] in activeKeyEntries"
+                :key="provider"
+                class="flex items-center gap-3"
+              >
+                <span class="w-24 text-sm capitalize shrink-0">{{ provider }}</span>
+                <div class="flex-1 bg-neutral-100 h-6 relative">
+                  <div
+                    class="h-full bg-accent transition-all duration-500"
+                    :style="{ width: `${(count / activeKeysMax) * 100}%` }"
+                  />
+                </div>
+                <span class="w-6 text-sm font-semibold text-right shrink-0">{{ count }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </UModal>
     </div>
   </UCard>
 </template>
 
 <script setup lang="ts">
+const isSupportOpen = ref(false)
+
+const isActiveKeysOpen = ref(false)
+const loadingActiveKeys = ref(false)
+const activeKeysError = ref(false)
+const activeKeys = ref<Record<string, number>>({})
+const activeKeyEntries = computed(() => Object.entries(activeKeys.value))
+const activeKeysMax = computed(() => Math.max(...Object.values(activeKeys.value), 1))
+
+const fetchActiveKeys = async () => {
+  loadingActiveKeys.value = true
+  activeKeysError.value = false
+  try {
+    const data = await apiFetch('/api/keys/stats')
+    activeKeys.value = data.activeKeys || {}
+  } catch {
+    activeKeysError.value = true
+  } finally {
+    loadingActiveKeys.value = false
+  }
+}
+
+watch(isActiveKeysOpen, (open) => {
+  if (open) fetchActiveKeys()
+})
+
 const { apiFetch } = useApi()
 const config = useRuntimeConfig()
 const proxyUrl = `${config.public.apiUrl}/api/proxy`
@@ -200,7 +265,7 @@ print(response.choices[0].message.content)`,
 
 client = OpenAI(
     api_key="<your-buyer-key>",
-    base_url="${proxyUrl}"
+    base_url="${proxyUrl}/v1"
 )
 
 response = client.chat.completions.create(
@@ -251,7 +316,7 @@ print(response.choices[0].message.content)`,
 
 client = OpenAI(
     api_key="<your-buyer-key>",
-    base_url="${proxyUrl}"
+    base_url="${proxyUrl}/v1"
 )
 
 response = client.chat.completions.create(

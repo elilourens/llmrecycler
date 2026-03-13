@@ -1,13 +1,12 @@
 <template>
-  <div class="min-h-screen bg-white">
+  <div class="min-h-screen auth-bg">
     <div class="max-w-7xl mx-auto px-4 py-8">
       <div class="flex justify-between items-center mb-8">
         <h1 class="text-2xl font-bold text-highlighted">Dashboard</h1>
         <div class="flex items-center gap-4">
-          <span v-if="user" class="text-sm text-muted">{{ user.email }}</span>
+          <UButton v-if="user" color="primary">{{ user.email }}</UButton>
           <UButton
             color="primary"
-            
             :loading="loggingOut"
             @click="handleLogout"
           >
@@ -103,3 +102,4 @@ const handleLogout = async () => {
   }
 }
 </script>
+
