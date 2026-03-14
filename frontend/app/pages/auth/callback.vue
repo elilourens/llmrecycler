@@ -49,8 +49,7 @@ onMounted(async () => {
   }
 
   subscription.unsubscribe()
-  // Hard navigate so the session is fully hydrated before the next page's middleware runs.
-  // Using navigateTo (client-side) causes a race where useSupabaseUser() hasn't updated yet.
-  window.location.href = destination
+  await new Promise(resolve => setTimeout(resolve, 500))
+  await navigateTo(destination)
 })
 </script>
