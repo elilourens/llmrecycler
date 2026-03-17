@@ -1,64 +1,22 @@
 <template>
   <div class="page">
-    <!-- Top: text left, video right -->
-    <div class="top-section">
-      <div class="hero-text">
-        <span class="hero-label">RESELL YOUR</span>
-        <div class="big-lines">
-          <span class="line-xl">API</span>
-          <span class="line-xl offset">CREDITS</span>
-          <span class="line-xl overlap">FOR CASH.</span>
+    <!-- Hero image -->
+    <div class="hero-wrap">
+      <div class="hero-bg"></div>
+      <AppHeader />
+      <div class="hero-squares">
+        <div class="hero-square">
+          <div class="hero-square-text">Recycle API Credits<br>for <span class="accent">Cash.</span></div>
+          <button class="hero-btn" @click="navigateTo('/auth/signup')">Start Selling →</button>
         </div>
-        <div class="hero-ctas">
-          <a href="/auth/signup">
-            <UButton color="primary" size="lg">Start Selling Now</UButton>
-          </a>
-          <a href="/auth/login">
-            <UButton color="neutral" variant="outline" size="lg">Sign In</UButton>
-          </a>
-        </div>
-      </div>
-      <div class="ascii-wrap">
-        <VideoAscii video-src="/0307.mp4" :width="90" :height="48" />
-      </div>
-      <div class="or-column">
-        <div class="or-box ghost"><span>OR</span></div>
-        <div class="or-box outline"><span>OR</span></div>
-        <div class="or-box faded"><span>OR</span></div>
-        <div class="or-box green"><span>OR</span></div>
-        <div class="or-box solid"><span>OR</span></div>
-      </div>
-    </div>
-
-    <!-- Bottom: lime section -->
-    <div class="bottom-section">
-      <div class="bottom-inner">
-        <div class="bottom-ascii">
-          <ImageAscii
-            src="/plant.jpg"
-            :invert="true"
-            :gamma="0.45"
-            :threshold="0.18"
-            :cols="150"
-            :rows="55"
-          />
-        </div>
-        <div class="bottom-left">
-          <div class="marquee-text">
-            <span class="line-fill">BUY API</span>
-            <span class="line-fill">CREDITS AT</span>
-            <span class="line-fill">HALF PRICE.</span>
-          </div>
-          <div class="bottom-ctas">
-            <a href="/auth/signup">
-              <UButton color="primary" size="lg">Start Buying Now</UButton>
-            </a>
-          </div>
+        <div class="hero-square">
+          <div class="hero-square-text">Buy API Inference<br>for <span class="accent">Half Price.</span></div>
+          <button class="hero-btn" @click="navigateTo('/auth/signup')">Start Buying →</button>
         </div>
       </div>
     </div>
 
-    <!-- Ticker divider -->
+    <!-- Ticker -->
     <div class="ticker-row">
       <div class="ticker-track">
         <div class="ticker-content">
@@ -102,8 +60,6 @@ useHead({ title: 'LLM Recycler' })
 </script>
 
 <style scoped>
-* { box-sizing: border-box; }
-
 :global(body) {
   background: #111;
 }
@@ -113,209 +69,81 @@ useHead({ title: 'LLM Recycler' })
   display: flex;
   flex-direction: column;
   background: #111;
-  overflow: hidden;
 }
 
-.hero-ctas {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin-top: 0.5rem;
+.accent {
+  color: var(--color-accent);
 }
 
-.top-section {
-  flex: 1;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  min-height: 0;
+.hero-wrap {
   position: relative;
-  max-width: 1800px;
-  margin: 0 auto;
   width: 100%;
+  height: 90vh;
 }
 
-.ascii-wrap {
-  flex: 0 0 55%;
-  overflow: hidden;
-  line-height: 0;
-  display: flex;
-  align-items: center;
-  position: relative;
+.hero-bg {
+  width: 100%;
+  height: 100%;
+  background: url('/eye_plants.jpg') center center / cover no-repeat;
 }
 
-.or-column {
+.hero-squares {
   position: absolute;
-  top: 0;
-  bottom: -6vw;
-  right: 2rem;
-  width: 18vw;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 2rem;
+}
+
+.hero-square {
+  width: clamp(380px, 38vw, 620px);
+  height: clamp(260px, 22vw, 360px);
+  background: #1a1a1a;
   display: flex;
   flex-direction: column;
-  z-index: 10;
+  justify-content: space-between;
+  padding: 2rem 2.25rem;
+  transition: transform 0.15s ease;
 }
 
-.or-box {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.hero-square:hover {
+  transform: scale(1.04);
 }
 
-.or-box span {
+.hero-square-text {
   font-family: Arial Black, Impact, sans-serif;
-  font-size: 4.5vw;
+  font-size: clamp(2rem, 3vw, 2.6rem);
   font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.04em;
-}
-
-.or-box.ghost {
-  opacity: 0.12;
-}
-.or-box.ghost span { color: #fff; }
-
-.or-box.outline {
-  border: 1px solid #2a2a2a;
-  opacity: 0.35;
-}
-.or-box.outline span {
-  color: transparent;
-  -webkit-text-stroke: 1px #fff;
-}
-
-.or-box.faded {
-  background: #161616;
-  opacity: 0.6;
-}
-.or-box.faded span { color: #444; }
-
-.or-box.green {
-  background: #0d1a0d;
-  opacity: 0.85;
-}
-.or-box.green span { color: var(--color-accent); }
-
-.or-box.solid {
-  background: #111;
-}
-.or-box.solid span { color: #fff; }
-
-.ascii-wrap :deep(.video-ascii-container) {
-  border: none !important;
-  width: 100%;
-}
-
-.ascii-wrap :deep(pre) {
-  font-size: clamp(0.28rem, 0.75vw, 0.48rem) !important;
-}
-
-
-.hero-text {
-  flex: 0 0 45%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 3rem 2rem 3rem 2.5rem;
-}
-
-.hero-label {
-  font-family: 'Courier New', monospace;
-  font-size: clamp(0.6rem, 1.2vw, 0.8rem);
-  letter-spacing: 0.2em;
-  color: #fff;
-  font-weight: bold;
+  color: #e8e8e8;
   text-transform: uppercase;
-  margin-bottom: 0.25rem;
-  display: block;
+  line-height: 1.0;
+  letter-spacing: -0.02em;
 }
 
-.big-lines {
-  display: flex;
-  flex-direction: column;
-  line-height: 0.85;
-  margin-bottom: 0.75rem;
-}
-
-.line-xl {
-  font-family: Arial Black, Impact, sans-serif;
-  font-size: clamp(3rem, 7.5vw, 6rem);
-  font-weight: 900;
-  color: #fff;
-  letter-spacing: -0.03em;
-  display: block;
-  text-transform: uppercase;
-}
-
-.line-xl.offset {
-  margin-left: clamp(1rem, 3vw, 2.5rem);
-}
-
-.line-xl.overlap {
-  margin-left: clamp(2rem, 6vw, 5rem);
-}
-
-/* Bottom lime section */
-.bottom-section {
-  flex: 0 0 auto;
-  background: var(--color-accent);
-  overflow: hidden;
-}
-
-.bottom-inner {
-  max-width: 1800px;
-  margin: 0 auto;
-  width: 100%;
-  padding: 1rem 0 0 0;
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-}
-
-.bottom-left {
-  flex: 0 0 45%;
-  display: flex;
-  flex-direction: column;
-}
-
-.bottom-ascii {
-  flex: 0 0 auto;
-  overflow: hidden;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  align-self: stretch;
-  line-height: 0;
-  width: clamp(160px, 18vw, 280px);
-}
-
-.marquee-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 0.88;
-  padding: 0 0.5rem;
-}
-
-.line-fill {
-  font-family: Arial Black, Impact, sans-serif;
-  font-size: 8.5vw;
-  font-weight: 900;
+.hero-btn {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  background: #fff;
   color: #111;
+  border: none;
+  padding: 0.65rem 1.5rem;
+  font-family: Arial Black, Impact, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: -0.03em;
-  white-space: nowrap;
-  display: block;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.1s;
 }
 
-.bottom-ctas {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
+.hero-btn:hover {
+  background: var(--color-accent);
+  color: #111;
 }
 
 
-/* Ticker divider */
+/* Ticker */
 .ticker-row {
   background: var(--color-accent);
   border-top: 2px solid #6a9a50;
@@ -361,7 +189,6 @@ useHead({ title: 'LLM Recycler' })
   background: #111;
   padding: 4rem 3rem;
   display: flex;
-  flex-direction: row;
   align-items: flex-start;
   gap: 2rem;
   max-width: 1800px;
@@ -402,7 +229,7 @@ useHead({ title: 'LLM Recycler' })
 .pricing-desc {
   font-family: 'Courier New', monospace;
   font-size: 0.8rem;
-  color: #666;
+  color: #888;
   margin: 0;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -422,7 +249,7 @@ useHead({ title: 'LLM Recycler' })
 .pricing-list li {
   font-family: 'Courier New', monospace;
   font-size: 0.75rem;
-  color: #444;
+  color: #aaa;
   letter-spacing: 0.05em;
 }
 
@@ -440,6 +267,23 @@ useHead({ title: 'LLM Recycler' })
   padding: 0 1rem;
 }
 
+@media (max-width: 900px) {
+  .hero-squares {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .hero-square {
+    width: clamp(220px, 60vw, 380px);
+    height: auto;
+    min-height: clamp(160px, 25vh, 240px);
+  }
+
+  .hero-square-text {
+    font-size: clamp(1.4rem, 5vw, 2rem);
+  }
+}
+
 @media (max-width: 768px) {
   .pricing-section {
     flex-direction: column;
@@ -452,54 +296,4 @@ useHead({ title: 'LLM Recycler' })
   }
 }
 
-@media (max-width: 640px) {
-  .top-section {
-    flex-direction: column;
-  }
-
-  .hero-text {
-    flex: 0 0 auto;
-    padding: 2rem 1.25rem 1rem;
-  }
-
-  .ascii-wrap {
-    flex: 0 0 auto;
-    width: 100%;
-    justify-content: center;
-  }
-
-  .ascii-wrap :deep(pre) {
-    font-size: clamp(0.18rem, 1.6vw, 0.28rem) !important;
-  }
-
-  .or-column {
-    position: static;
-    width: 100%;
-    flex-direction: row;
-    height: 2.5rem;
-  }
-
-  .or-box span {
-    font-size: 5vw;
-  }
-
-  .bottom-inner {
-    flex-direction: column-reverse;
-  }
-
-  .bottom-ascii {
-    width: 100%;
-    justify-content: center;
-  }
-
-
-  .bottom-left {
-    flex: 0 0 auto;
-    width: 100%;
-  }
-
-  .line-fill {
-    font-size: 13vw;
-  }
-}
 </style>
