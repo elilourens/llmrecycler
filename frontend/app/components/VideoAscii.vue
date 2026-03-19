@@ -1,5 +1,5 @@
 <template>
-  <div class="video-ascii-container border-2 border-slate-900">
+  <div class="video-ascii-container">
     <video
       ref="videoElement"
       :src="videoSrc"

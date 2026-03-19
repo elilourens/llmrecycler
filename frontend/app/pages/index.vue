@@ -1,15 +1,17 @@
 <template>
   <div class="page">
-    <!-- Hero image -->
+    <!-- Hero -->
     <div class="hero-wrap">
-      <div class="hero-bg"></div>
+      <ClientOnly>
+        <ThreeBackground :pulse-trigger="pulseTrigger" />
+      </ClientOnly>
       <AppHeader />
       <div class="hero-squares">
-        <div class="hero-square">
+        <div class="hero-square" @mouseenter="onCardHover">
           <div class="hero-square-text">Recycle API Credits<br>for <span class="accent">Cash.</span></div>
           <button class="hero-btn" @click="navigateTo('/auth/signup')">Start Selling →</button>
         </div>
-        <div class="hero-square">
+        <div class="hero-square" @mouseenter="onCardHover">
           <div class="hero-square-text">Buy API Inference<br>for <span class="accent">Half Price.</span></div>
           <button class="hero-btn" @click="navigateTo('/auth/signup')">Start Buying →</button>
         </div>
@@ -40,8 +42,12 @@
           <li>Instantly start selling, no approval needed</li>
         </ul>
       </div>
-      <div class="pricing-divider">//</div>
-      <div class="pricing-card">
+      <div class="pricing-divider">
+        <ClientOnly>
+          <VideoAscii videoSrc="/0307.mp4" :width="50" :height="32" />
+        </ClientOnly>
+      </div>
+      <div class="pricing-card pricing-card--right">
         <span class="pricing-tag">FOR BUYERS</span>
         <div class="pricing-amount">50<span class="pricing-unit">%</span></div>
         <p class="pricing-desc">off retail price on all API credits</p>
@@ -57,6 +63,17 @@
 
 <script setup lang="ts">
 useHead({ title: 'LLM Recycler' })
+
+const pulseTrigger = ref<{ x: number; y: number; ts: number } | undefined>()
+
+const onCardHover = (e: MouseEvent) => {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  pulseTrigger.value = {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+    ts: Date.now(),
+  }
+}
 </script>
 
 <style scoped>
@@ -79,12 +96,6 @@ useHead({ title: 'LLM Recycler' })
   position: relative;
   width: 100%;
   height: 90vh;
-}
-
-.hero-bg {
-  width: 100%;
-  height: 100%;
-  background: url('/eye_plants.jpg') center center / cover no-repeat;
 }
 
 .hero-squares {
@@ -188,8 +199,9 @@ useHead({ title: 'LLM Recycler' })
 .pricing-section {
   background: #111;
   padding: 4rem 3rem;
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
   gap: 2rem;
   max-width: 1800px;
   margin: 0 auto;
@@ -197,10 +209,23 @@ useHead({ title: 'LLM Recycler' })
 }
 
 .pricing-card {
-  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.pricing-card--right {
+  text-align: right;
+}
+
+.pricing-card--right .pricing-list li::before {
+  content: '';
+}
+
+.pricing-card--right .pricing-list li::after {
+  content: ' →';
+  color: var(--color-accent);
 }
 
 .pricing-tag {
@@ -259,12 +284,10 @@ useHead({ title: 'LLM Recycler' })
 }
 
 .pricing-divider {
-  font-family: Arial Black, sans-serif;
-  font-size: 2rem;
-  font-weight: 900;
-  color: #222;
-  align-self: center;
-  padding: 0 1rem;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 @media (max-width: 900px) {
@@ -286,13 +309,8 @@ useHead({ title: 'LLM Recycler' })
 
 @media (max-width: 768px) {
   .pricing-section {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     padding: 2.5rem 1.5rem;
-  }
-
-  .pricing-divider {
-    align-self: flex-start;
-    padding: 0;
   }
 }
 
